@@ -20,6 +20,8 @@ lives.
 - An older copy of the game sits in a private scratch repository of the owner's. It is stale; this repo is
   the one to work in.
 
+**A second handoff, `HANDOFF-ios.md`,** is for a session on the Mac that tries the game as an app in Xcode.
+
 ## First job for the local session
 
 The owner recorded three play sessions on the Mac: Berlin, then New York, then Nuremberg. They are in a folder
