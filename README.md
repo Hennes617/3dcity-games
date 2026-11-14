@@ -126,6 +126,8 @@ terrain tiles as `t-{z}-{x}-{y}.png`, vector tiles as base64 text in `v-{z}-{x}-
 - `src/game/roadMesh.ts`: roads as ribbons on the terrain, sharp from close up.
 - `src/game/cars.ts`: the car: how it looks, moves and collides.
 - `src/game/game.ts`: you, traffic, people, police, jobs, camera.
+- `src/addon.ts`: where an extra feature plugs in. The game loads an add-on only when it is handed its
+  address (`loadAddon(address)`); on its own it loads none.
 - `src/challenge.ts`: a run as a link (`?c=…`): the places of its deliveries and the score to beat.
 - `src/game/input.ts`, `src/main.ts`: keys and touch, the start screen and the numbers on screen.
 - `src/geo/`, `src/scene/`, `src/export/`, `src/data/`: the 3D engine, copied from Walk it 3D / Your Place

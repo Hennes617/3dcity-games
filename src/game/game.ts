@@ -224,6 +224,13 @@ export class Game {
   onRide: (text: string) => void = () => undefined;
   onSquare: (state: 'loading' | 'ready') => void = () => undefined;
   onSave: () => void = () => undefined;
+  /**
+   * Openings for add-ons (see `src/addon.ts`). `actions`: asked in turn when the in/out key or
+   * button is pressed; the first to return true has used the press. `hints`: asked in turn for the
+   * line beside that key; the first to give one is shown.
+   */
+  readonly actions: Array<() => boolean> = [];
+  readonly hints: Array<() => string | null> = [];
   /** Something that makes a noise has happened; `strength` from 0 to 1 where it varies. */
   onSound: (what: Sfx, strength?: number) => void = () => undefined;
   /** The last delivery of a run is in: what it scored and how long it took (s). */
@@ -915,6 +922,8 @@ export class Game {
   /** Get into the car beside you, or out of the one you're in. */
   action(): void {
     if (this.frozen > 0) return;
+    // an add-on may take the press for something of its own
+    for (const take of this.actions) if (take()) return;
     const w = this.world;
     if (this.car) {
       const c = this.car;
@@ -1738,6 +1747,14 @@ export class Game {
       if (c) hint = c.driver === 'none' ? 'get in' : c.kind === 'bus' ? 'take this bus' : 'take this car';
       else if (this.subwayHere() >= 0) hint = 'take the subway';
     } else if (this.car.hp <= 0) hint = 'wrecked: get out';
+    // an add-on's hint for what the press would do here comes before the game's own
+    for (const say of this.hints) {
+      const t = say();
+      if (t) {
+        hint = t;
+        break;
+      }
+    }
     return {
       cash: this.cash,
       heat: Math.ceil(this.heat),

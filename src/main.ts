@@ -6,6 +6,7 @@
 import { Game, RUN_JOBS, type Course, type Hud } from './game/game';
 import { packChallenge, readChallenge, type Challenge } from './challenge';
 import { Sound } from './sound';
+import { addonHost } from './addon';
 import { serviceIcon, type ServiceKind } from './game/services';
 import { Controls } from './game/input';
 import { Minimap } from './game/minimap';
@@ -234,6 +235,7 @@ async function go(at: LngLat, name?: string, sent: Challenge | null = null): Pro
       controls.onMap = () => showMap(true);
       game.showRoute = routeLine();
       (window as unknown as { game: Game }).game = game;
+      addonHost({ game, toast, api: 1 });
     }
     await game.start(at);
     // a run a friend sent is a run, whatever the start screen is set to
