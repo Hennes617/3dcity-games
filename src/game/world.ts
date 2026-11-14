@@ -214,10 +214,10 @@ function stopSigns(stops: Stop[], groundY: (x: number, y: number) => number): Gr
 }
 
 const serviceMats = new Map<string, MeshBasicMaterial>();
-const serviceDisc = new CircleGeometry(4.6, 28);
+const serviceDisc = new CircleGeometry(4.6, 28); // SIGN_R
 
 /** The symbol of a fuel, fire or police station, flat on the ground where the map has it. */
-function serviceSign(s: Service, groundY: (x: number, y: number) => number): Mesh {
+function serviceSign(s: Service, groundY: (x: number, y: number) => number, surface: (x: number, y: number) => number): Mesh {
   const key = s.kind + !!s.invented;
   let mat = serviceMats.get(key);
   if (!mat) {
@@ -228,8 +228,22 @@ function serviceSign(s: Service, groundY: (x: number, y: number) => number): Mes
   // its own copy of the disc, so that taking a square away can dispose of every sign alike
   const m = new Mesh(serviceDisc.clone(), mat);
   m.rotation.x = -Math.PI / 2;
-  m.position.set(s.x, groundY(s.x, s.y) + 0.6, -s.y);
+  // on a slope the ground under the disc rises past its middle and hides part of it: lift it by that much
+  m.position.set(s.x, groundY(s.x, s.y) + riseUnder(surface, s.x, s.y, SIGN_R) + 0.6, -s.y);
   return m;
+}
+
+const SIGN_R = 4.6;
+
+/** How far the ground rises above its height at (x, y) within r metres of it: what a flat disc laid there must clear. */
+export function riseUnder(surface: (x: number, y: number) => number, x: number, y: number, r: number): number {
+  const mid = surface(x, y);
+  let rise = 0;
+  for (let k = 0; k < 16; k++) {
+    const a = (k / 16) * Math.PI * 2;
+    for (const f of [0.5, 1]) rise = Math.max(rise, surface(x + r * f * Math.cos(a), y + r * f * Math.sin(a)) - mid);
+  }
+  return rise;
 }
 
 /**
@@ -331,7 +345,7 @@ export class World {
     const reach = AREA_SIZE_M / 2 - 8;
     world.services.push(...real.filter((r) => Math.abs(r.x) < reach && Math.abs(r.y) < reach), ...inventServices(real, world.proj, reach, roads));
     // the map puts such a place on its building: the symbol lies on the roof, where it can be seen
-    for (const sv of world.services) signs.add(serviceSign(sv, (x, y) => surfaceY(model, x, y) + solids.tallestNear(x, y, 5) + 0.2));
+    for (const sv of world.services) signs.add(serviceSign(sv, (x, y) => surfaceY(model, x, y) + solids.tallestNear(x, y, 5) + 0.2, (x, y) => surfaceY(model, x, y)));
     if (!world.sights.length) world.sights.push(...townSights(tiles, world.proj, AREA_SIZE_M / 2 - 8));
     return world;
   }
