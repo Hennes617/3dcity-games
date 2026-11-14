@@ -34,7 +34,7 @@ import { Strip, drawnOverGround } from './roadMesh';
 import { laneOffset, SPEED_LIMIT, type PathState, type Pick, type RouteField } from './roads';
 import { areaCentre, World } from './world';
 import type { Ears, Sfx } from '../sound';
-import { JOB_OF, type JobKind } from './services';
+import { JOB_OF, type JobKind, type Service } from './services';
 
 const FOV = 42;
 /** A place opens seen from this high (m): about a kilometre of it, to show where you are. */
@@ -239,6 +239,8 @@ export class Game {
   /** where the last job was taken, so that the next comes from somewhere else */
   private lastFrom: LngLat | null = null;
   private offerT = 0;
+  /** each fuel station's spot on the street, worked out once */
+  private readonly pumps = new WeakMap<Service, [number, number] | null>();
 
   /** No run: the open jobs from the start, as many as one likes. */
   openPlay(): void {
@@ -250,6 +252,27 @@ export class Game {
     this.offerT = 0;
     if (this.job) this.endJob(false);
     for (const m of this.pickups.splice(0)) this.scene.remove(m.mesh);
+  }
+
+  /**
+   * What mending the car you sit in costs, when it stands at a fuel station; null when there is
+   * nothing to mend or no station here. Four dollars for each point of damage, at least twenty.
+   */
+  repairCost(): number | null {
+    const c = this.car;
+    if (!c || c.hp <= 0 || c.hp >= 97 || c.speed > 3) return null;
+    for (const s of this.world.services) {
+      if (s.kind !== 'fuel') continue;
+      let at = this.pumps.get(s);
+      if (at === undefined) {
+        // the map puts a station on its building: its forecourt is the street beside it
+        const n = this.world.roads.nearest(s.x, s.y, 150, 'traffic');
+        at = n ? this.world.roads.point(n.line, n.s) : null;
+        this.pumps.set(s, at);
+      }
+      if (Math.hypot(s.x - c.x, s.y - c.y) < 18 || (at && Math.hypot(at[0] - c.x, at[1] - c.y) < 18)) return Math.max(20, Math.round(((100 - c.hp) * 4) / 10) * 10);
+    }
+    return null;
   }
 
   /** Start counting a new run of deliveries; with a course, the run goes to its places. */
@@ -918,6 +941,19 @@ export class Game {
     const w = this.world;
     if (this.car) {
       const c = this.car;
+      // stopped at a fuel station with a dented car: the same press pays for a repair
+      const cost = this.repairCost();
+      if (cost !== null) {
+        if (this.cash >= cost) {
+          this.cash -= cost;
+          c.hp = 100;
+          this.onToast(`Repaired  −$${cost}`, 'good');
+          this.onSound('pickup');
+          this.onSave();
+          return;
+        }
+        this.onToast(`A repair costs $${cost}: you have $${Math.round(this.cash)}`, 'bad');
+      }
       if (c.speed > 4) {
         this.onToast('Slow down to get out', 'info');
         return;
@@ -1738,6 +1774,10 @@ export class Game {
       if (c) hint = c.driver === 'none' ? 'get in' : c.kind === 'bus' ? 'take this bus' : 'take this car';
       else if (this.subwayHere() >= 0) hint = 'take the subway';
     } else if (this.car.hp <= 0) hint = 'wrecked: get out';
+    else {
+      const cost = this.repairCost();
+      if (cost !== null) hint = this.cash >= cost ? `repair for $${cost}` : `a repair costs $${cost}`;
+    }
     return {
       cash: this.cash,
       heat: Math.ceil(this.heat),

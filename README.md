@@ -52,6 +52,10 @@ the streets, buildings, water and hills come from the same map squares as
   list is kept by hand in `src/landmarks.ts`. Where a square has none of those, public places from the map
   are named instead, one of each kind and six at most: town hall, railway station, museum, theatre, library,
   stadium, bus station, ferry terminal, cinema, marketplace, swimming pool, sports centre.
+- **A fuel station mends your car for money.** Stop at one in a dented car and the hint reads "repair for"
+  with the price: four dollars for each point of damage, at least twenty. The same key or button that gets
+  you in and out pays for it. Without enough money the hint says what it costs, and the press gets you out
+  as usual. Made-up stations mend too.
 - **Fuel, fire and police stations carry a symbol and no name**, on their roof and on both maps. Shops, restaurants, hotels, schools, hospitals, places of worship, courts and post offices
   are neither named nor marked.
 - **Challenge a friend.** After a run, a button makes a link to it. Whoever opens the link starts where you
