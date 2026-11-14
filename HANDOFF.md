@@ -139,6 +139,13 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   clips; and what is free and what is paid. The owner's first thought was three free runs and everything
   after that paid. The research handoff says the opposite (never lock what is free now), and the open jobs
   went live free on this day.
+  Decided since: the free game stays as it is (the run of three and the open jobs). The paid version is a
+  garage and cars with a friends league and kept progress; a transit-driver mode was turned down as aimed at
+  a different group. The list is kept in a free Supabase project, `3da-waitlist` (ref
+  `lecaoamodyjubwuvhpcq`, Frankfurt, organization MindMacher): table `waitlist`, where a visitor may add a
+  row and nothing else. Tested as a visitor would use it: a sign-up is taken, the same address twice and a
+  bad address are refused, reading is refused. Still off in the game: the build has not been given the
+  address, and the owner's Impressum details are missing.
   Hiding paid code: a private repo hides the source, not the game, since a browser game's code is sent to
   every player. Real hiding needs a host that checks who has paid before sending the paid part.
 - **The "3D view social idea"** is the private repo `yourplace3d/yourplace-live`: friends shown live at their
