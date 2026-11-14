@@ -32,6 +32,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The waiting list. The key is Supabase's publishable key: it is meant to be public and lets a
+      # visitor add a row and nothing else. Never put a secret or service-role key here.
+      # While the Impressum or the privacy page still has a blank to fill in, the game is built
+      # without the list, so it cannot open by accident.
+      - name: Switch the waiting list on, if the legal pages are complete
+        run: |
+          if grep -q 'data-blank\|data-draft' impressum/index.html privacy/index.html; then
+            echo "::warning::Impressum or privacy page is still a draft: building WITHOUT the waiting list."
+          else
+            echo "VITE_WAITLIST_URL=https://lecaoamodyjubwuvhpcq.supabase.co/rest/v1/waitlist" >> "$GITHUB_ENV"
+            echo "VITE_WAITLIST_KEY=sb_publishable__R5VVIzkFXK-ozBm18IYjg_UTw7guWe" >> "$GITHUB_ENV"
+          fi
+
       - name: Type-check and build
         run: npm run build
 

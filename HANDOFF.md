@@ -146,6 +146,11 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   row and nothing else. Tested as a visitor would use it: a sign-up is taken, the same address twice and a
   bad address are refused, reading is refused. Still off in the game: the build has not been given the
   address, and the owner's Impressum details are missing.
+  Wired since, on branch `claude/waitlist-wiring` (not merged, not live): `impressum/` and `privacy/` pages
+  holding the drafts, linked from both forms, with every blank marked `data-blank` and a draft notice marked
+  `data-draft`. `pages.yml` gives the build the list's address and publishable key only when neither mark is
+  left in those two pages, so the list cannot open before the owner has filled them in. To open the list:
+  fill the blanks, remove the draft notice, merge, deploy.
   Hiding paid code: a private repo hides the source, not the game, since a browser game's code is sent to
   every player. Real hiding needs a host that checks who has paid before sending the paid part.
 - **The "3D view social idea"** is the private repo `yourplace3d/yourplace-live`: friends shown live at their
