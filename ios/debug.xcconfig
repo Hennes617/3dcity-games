@@ -1,0 +1,5 @@
+CAPACITOR_DEBUG = true
+
+// The Apple team id for running on your own device lives in signing.xcconfig,
+// which is not committed. Copy signing.xcconfig.example to signing.xcconfig and fill it in.
+#include? "signing.xcconfig"
