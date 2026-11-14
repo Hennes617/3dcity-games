@@ -7,6 +7,7 @@ import { Game, RUN_JOBS, type Course, type Hud } from './game/game';
 import { packChallenge, readChallenge, type Challenge } from './challenge';
 import { Sound } from './sound';
 import { addonHost } from './addon';
+import { wireAccount } from './account';
 import { serviceIcon, type ServiceKind } from './game/services';
 import { Controls } from './game/input';
 import { Minimap } from './game/minimap';
@@ -828,3 +829,6 @@ else if (linked) {
   $<HTMLInputElement>('q').value = linked;
   void search(linked);
 }
+
+// the sign-in for players of the full version: nothing is shown unless the build has accounts
+wireAccount($('account'));

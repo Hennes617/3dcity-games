@@ -2,7 +2,10 @@
   "name": "drive-it-3d",
   "private": true,
   "version": "0.1.0",
-  "repository": { "type": "git", "url": "https://github.com/yourplace3d/3dcity-games.git" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourplace3d/3dcity-games.git"
+  },
   "description": "Drive it 3D: a small top-down driving game on the real 3D map of any city.",
   "license": "MIT",
   "type": "module",
@@ -14,6 +17,7 @@
   },
   "dependencies": {
     "@mapbox/vector-tile": "2.0.3",
+    "@supabase/supabase-js": "2.119.0",
     "earcut": "3.2.4",
     "pbf": "4.0.1",
     "polygon-clipping": "0.15.7",
