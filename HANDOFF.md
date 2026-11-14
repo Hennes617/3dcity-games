@@ -127,6 +127,20 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   such as buying a garage are free to use, names and looks of other games are not; plain words only
   ("repair", "your garage"). Not legal advice.
   Counted in 210 tiles of big-city centres: police in 90 %, fuel in 88 %, fire stations in 76 %.
+- **Income: the demand test (14 November 2026).** A research session of the owner's wrote a handoff after
+  seeing a paid single-city transit game advertised (free beta, 19.99 EUR full version, local Reddit ads). Its
+  first milestone is to learn whether anyone would pay before anything paid is built: a waiting list.
+  Built on branch `claude/waitlist`, not live: `full/index.html` (what a full version would add, with the
+  form), one quiet line with the same form on a run's result, and `?ref=` / `?utm_source=` remembered for
+  the visit and sent only with a sign-up (`src/waitlist.ts`). Nothing is shown or sent until the build gets
+  `VITE_WAITLIST_URL` (and `VITE_WAITLIST_KEY` for a Supabase table); `?waitlist=preview` shows it with
+  nothing behind it. Open with the owner: where the list is kept; a contact address, an Impressum and a
+  privacy note, which a German site collecting addresses needs before it opens (not legal advice); the ad
+  clips; and what is free and what is paid. The owner's first thought was three free runs and everything
+  after that paid. The research handoff says the opposite (never lock what is free now), and the open jobs
+  went live free on this day.
+  Hiding paid code: a private repo hides the source, not the game, since a browser game's code is sent to
+  every player. Real hiding needs a host that checks who has paid before sending the paid part.
 - **The "3D view social idea"** is the private repo `yourplace3d/yourplace-live`: friends shown live at their
   building and floor. Agreed with the owner: no live location in the game. The two can share links between
   friends later; a run that starts or ends at a place the player picks was offered and not yet decided.

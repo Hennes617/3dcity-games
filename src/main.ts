@@ -6,6 +6,7 @@
 import { Game, RUN_JOBS, type Course, type Hud } from './game/game';
 import { packChallenge, readChallenge, type Challenge } from './challenge';
 import { Sound } from './sound';
+import { waitlistOn, wireWaitlist } from './waitlist';
 import { serviceIcon, type ServiceKind } from './game/services';
 import { Controls } from './game/input';
 import { Minimap } from './game/minimap';
@@ -472,6 +473,8 @@ function showBoard(run: Score | null): void {
     $('challenge').hidden = !can;
     $('btn-challenge').textContent = rival ? `Send your run back to ${rival.name || 'them'}` : 'Challenge a friend to beat this';
     $('challenge-link').hidden = true;
+    // one quiet line under it, where a list is open: who wants to hear of a full version
+    $('more').hidden = !waitlistOn;
     $('challenge-note').textContent = `Makes a link to send: the same ${deliveries(run.jobs ?? RUN_JOBS)}, with your score to beat.`;
     $('result-form').hidden = false;
     $<HTMLInputElement>('result-name').value = lastName();
@@ -728,6 +731,13 @@ if (baked) {
 }
 // the map's key shows the same symbols the map does
 for (const el of document.querySelectorAll<HTMLElement>('#bigmap-key .ico, #openjobs .ico')) el.style.backgroundImage = `url(${serviceIcon(el.dataset.kind as ServiceKind, !!el.dataset.invented).toDataURL()})`;
+$('btn-more').addEventListener('click', () => {
+  $('btn-more').hidden = true;
+  $('more-form').hidden = false;
+  $<HTMLInputElement>('more-form').querySelector('input')?.focus();
+});
+wireWaitlist($<HTMLFormElement>('more-form'), $('more-note'), () => placeName);
+
 // ------------------------------------------------------------------ pause, and what to play
 
 /** Hold the game, or let it go on. The card also lets the player change what they are playing. */

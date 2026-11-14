@@ -259,3 +259,9 @@ body.touch #btn-sound { font-size: 22px; padding: 12px 15px; right: calc(72px + 
 #pause h2 { margin: 0 0 4px; font-size: 24px; }
 #btn-pause { pointer-events: auto; position: absolute; top: calc(12px + env(safe-area-inset-top)); right: calc(112px + env(safe-area-inset-right)); color: var(--ink); font-size: 13px; line-height: 1.4; padding: 9px 12px; cursor: pointer; letter-spacing: 1px; }
 body.touch #btn-pause { font-size: 16px; padding: 13px 15px; right: calc(132px + env(safe-area-inset-right)); }
+#more { margin: 4px 0 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+#more[hidden] { display: none; }
+#more a { color: var(--yellow); }
+#more-form { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 4px; }
+#more-form[hidden] { display: none; }
+#more-form input { flex: 1 1 170px; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #181b20; color: var(--ink); font: inherit; font-size: 16px; }
