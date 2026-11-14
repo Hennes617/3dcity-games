@@ -4,7 +4,7 @@
  */
 
 import { Game, RUN_JOBS, type Course, type Hud } from './game/game';
-import { packChallenge, readChallenge, type Challenge } from './challenge';
+import { linkHome, packChallenge, readChallenge, type Challenge } from './challenge';
 import { Sound } from './sound';
 import { serviceIcon, type ServiceKind } from './game/services';
 import { Controls } from './game/input';
@@ -530,7 +530,7 @@ $('btn-challenge').addEventListener('click', async () => {
   const name = typed || fresh.name || lastName();
   const code = packChallenge({ name, score: fresh.score, seconds: fresh.seconds, place: fresh.place, course: freshCourse });
   const { start } = freshCourse;
-  const url = `${location.origin}${location.pathname}?c=${code}#${start.lat.toFixed(5)},${start.lon.toFixed(5)}`;
+  const url = `${linkHome(location)}?c=${code}#${start.lat.toFixed(5)},${start.lon.toFixed(5)}`;
   const text = `Beat my run in ${fresh.place}: ${fmtMoney(fresh.score)} in ${fmtTime(fresh.seconds)}, ${deliveries(freshCourse.legs.length)}.`;
   const theirs = `Whoever opens it plays your ${deliveries(freshCourse.legs.length)}.`;
   const box = $<HTMLInputElement>('challenge-link');
