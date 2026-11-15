@@ -5,7 +5,7 @@
 
 import { Game, RUN_JOBS, type Course, type Hud } from './game/game';
 import { linkHome, packChallenge, readChallenge, type Challenge } from './challenge';
-import { countArrival, countMade, countOpened } from './linkCount';
+import { cameByVideo, countMade, countOpened, playingAt } from './linkCount';
 import { Sound } from './sound';
 import { addonHost } from './addon';
 import { fullNote } from './full';
@@ -207,6 +207,7 @@ function setScreen(screen: 'start' | 'play'): void {
 async function go(at: LngLat, name?: string, sent: Challenge | null = null): Promise<void> {
   if (busy) return;
   busy = true;
+  playingAt(at);
   status.className = 'status';
   status.textContent = '';
   working(name ? `Loading ${name}` : 'Loading the streets');
@@ -538,7 +539,7 @@ $('btn-challenge').addEventListener('click', async () => {
   const code = packChallenge({ name, score: fresh.score, seconds: fresh.seconds, place: fresh.place, course: freshCourse });
   const { start } = freshCourse;
   // the tally of links made and opened: the line under the button says so
-  countMade(code);
+  countMade(code, freshCourse.start);
   const url = `${linkHome(location)}?c=${code}#${start.lat.toFixed(5)},${start.lon.toFixed(5)}`;
   const text = `Beat my run in ${fresh.place}: ${fmtMoney(fresh.score)} in ${fmtTime(fresh.seconds)}, ${deliveries(freshCourse.legs.length)}.`;
   const theirs = `Whoever opens it plays your ${deliveries(freshCourse.legs.length)}.`;
@@ -890,8 +891,8 @@ const linked = BAKED ? '' : decodeURIComponent(location.hash.slice(1)).replace(/
 const fromLink = parseLatLon(linked);
 const code = BAKED ? null : new URLSearchParams(location.search).get('c');
 const sentRun = code ? readChallenge(code) : null;
-if (sentRun) countOpened();
-if (!BAKED) countArrival(new URLSearchParams(location.search));
+if (!BAKED) cameByVideo(new URLSearchParams(location.search));
+if (sentRun) countOpened(sentRun.course.start);
 if (sentRun) void go(sentRun.course.start, sentRun.place || undefined, sentRun);
 else if (fromLink) void go(fromLink);
 else if (linked) {
