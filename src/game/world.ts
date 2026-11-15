@@ -16,7 +16,7 @@ import { Solids, Streams, WaterMask } from './solids';
 import { sightsIn, type Sight } from '../landmarks';
 import { localColours } from './localColours';
 import { calmGround } from './ground';
-import { addWindows, windowsOn } from './windows';
+import { addWindows, styleWindows, windowsOn } from './windows';
 import { inventServices, readReserved, readServices, serviceIcon, type Service } from './services';
 
 export const AREA_SIZE_M = 1500;
@@ -345,7 +345,14 @@ export class World {
     model.terrain.base.visible = false;
     await breathe();
     // a trial: windows and doors on the walls
-    if (windowsOn()) model.onBuildings = (mesh) => addWindows(mesh.material);
+    if (windowsOn()) {
+      // a building at a well-known sight stays bare
+      const famous = sightsIn(makeProjector(centre), AREA_SIZE_M / 2);
+      model.onBuildings = (mesh) => {
+        styleWindows(mesh.geometry, famous);
+        addWindows(mesh.material);
+      };
+    }
     model.setBuildingSpecs(buildings);
     await breathe();
     model.setFeatures(data.features);
