@@ -131,6 +131,8 @@ terrain tiles as `t-{z}-{x}-{y}.png`, vector tiles as base64 text in `v-{z}-{x}-
   address (`loadAddon(address)`); on its own it loads none.
   For such a file the game can stand a car in the world, take one out, lay a ring, put a symbol on a
   roof and on the maps, stand still while a menu is open, and tell which buildings are walls.
+- `src/full.ts`: a tester's way to extras that are not public: a private key in the address (`?full=<key>`)
+  asks a gate for an add-on. Without a key the game contacts no one. `?full=off` forgets the key.
 - `src/challenge.ts`: a run as a link (`?c=…`): the places of its deliveries and the score to beat.
 - `src/game/input.ts`, `src/main.ts`: keys and touch, the start screen and the numbers on screen.
 - `src/geo/`, `src/scene/`, `src/export/`, `src/data/`: the 3D engine, copied from Walk it 3D / Your Place

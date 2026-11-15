@@ -7,6 +7,7 @@ import { Game, RUN_JOBS, type Course, type Hud } from './game/game';
 import { linkHome, packChallenge, readChallenge, type Challenge } from './challenge';
 import { Sound } from './sound';
 import { addonHost } from './addon';
+import { fullNote } from './full';
 import { serviceIcon, type ServiceKind } from './game/services';
 import { Controls } from './game/input';
 import { Minimap } from './game/minimap';
@@ -236,6 +237,8 @@ async function go(at: LngLat, name?: string, sent: Challenge | null = null): Pro
       game.showRoute = routeLine();
       (window as unknown as { game: Game }).game = game;
       addonHost({ game, toast, api: 2 });
+      // a tester's key was in play: say how it went
+      void fullNote.then((n) => n && toast(n.text, n.kind));
     }
     await game.start(at);
     // a run a friend sent is a run, whatever the start screen is set to
