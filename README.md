@@ -78,7 +78,10 @@ the streets, buildings, water and hills come from the same map squares as
   a stream or ditch lets a car through, slowly and with spray.
   The car you left has a white ring around it.
 - **Public transport, from the map.** Trams run on the real tram tracks and buses on the bigger streets, and
-  both wait at the real stops (red dots for trams, green for buses). Trains run on the railway tracks and
+  both wait at the real stops. A bus stop is a small shelter with a sign on a post, a tram stop a platform
+  beside the track. The sign follows the country's road sign for a stop where the game knows it (a green H
+  on yellow in Germany, Austria and Switzerland), and is a white bus or tram on a coloured disc elsewhere;
+  no operator's own symbol is drawn (`src/game/stopShapes.ts`). Trains run on the railway tracks and
   brake for nothing but another train: keep off the track. At the end of a track a train or tram waits a moment and goes back the way it came. Trains have no stations yet. You can take a bus; trams stay on their rails. A subway
   entrance is a stairwell going down, with a sign on a post beside it (a white letter on a blue disc:
   U in Germany and Austria, M elsewhere; the game's own sign, no operator's symbol): walk in on foot and you come up at the station nearest to where you're headed.

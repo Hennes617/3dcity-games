@@ -18,6 +18,7 @@ import { localColours } from './localColours';
 import { calmGround } from './ground';
 import { readStreetNames, type StreetLabel } from './streetNames';
 import { subwayEntrance, subwayLetter } from './subwaySign';
+import { stopShapes, stopSign, type StopSign, type StopSpot } from './stopShapes';
 import { addWindows, styleWindows, windowsOn } from './windows';
 import { inventServices, readReserved, readServices, serviceIcon, type Service } from './services';
 
@@ -197,12 +198,11 @@ function townSights(tiles: LoadedTile[], proj: Projector, half: number): Sight[]
     .map(({ name, x, y }) => ({ name, x, y }));
 }
 
-const SIGN = { bus: ['#3fae5a', 1.1], tram: ['#d8362e', 1.3], subway: ['#1f6fd6', 2.6] } as const;
-const signMats = new Map<string, MeshBasicMaterial>();
 
-/** A coloured disc on the ground at every stop, and a bigger one at subway entrances. */
-function stopSigns(stops: Stop[], groundY: (x: number, y: number) => number, roads: RoadNet, letter: 'U' | 'M'): Group {
+/** What stands at every stop: a shelter, a platform, or a stairwell, each with its sign. */
+function stopSigns(stops: Stop[], groundY: (x: number, y: number) => number, roads: RoadNet, letter: 'U' | 'M', sign: StopSign): Group {
   const g = new Group();
+  const spots: StopSpot[] = [];
   for (const s of stops) {
     if (s.kind === 'subway') {
       // a stairwell with its sign, lying along the street beside it
@@ -213,18 +213,20 @@ function stopSigns(stops: Stop[], groundY: (x: number, y: number) => number, roa
       g.add(e);
       continue;
     }
-    const [colour, r] = SIGN[s.kind];
-    // on a slope the ground would hide part of the disc: it clears the highest ground under it
-    const rise = riseUnder(groundY, s.x, s.y, r);
-    for (const [rad, col, lift] of [[r, '#16181c', 0.5], [r * 0.72, colour, 0.56]] as Array<[number, string, number]>) {
-      let mat = signMats.get(col);
-      if (!mat) signMats.set(col, (mat = new MeshBasicMaterial({ color: col, side: DoubleSide })));
-      const m = new Mesh(new CircleGeometry(rad, 20), mat);
-      m.rotation.x = -Math.PI / 2;
-      m.position.set(s.x, groundY(s.x, s.y) + rise + lift, -s.y);
-      g.add(m);
+    // a bus stop or a tram stop: beside its street or track, on the side it lies on
+    const near = roads.nearest(s.x, s.y, 40, s.kind === 'tram' ? 'tram' : 'drive') ?? roads.nearest(s.x, s.y, 40, 'any');
+    let heading = 0;
+    let side: 1 | -1 = 1;
+    if (near) {
+      const [hx, hy] = roads.heading({ line: near.line, s: near.s, dir: 1 });
+      const [rx, ry] = roads.point(near.line, near.s);
+      heading = Math.atan2(hy, hx);
+      // left of the heading is (-hy, hx)
+      side = (s.x - rx) * -hy + (s.y - ry) * hx >= 0 ? 1 : -1;
     }
+    spots.push({ kind: s.kind, x: s.x, y: s.y, ground: groundY(s.x, s.y) + riseUnder(groundY, s.x, s.y, 3), heading, side });
   }
+  g.add(stopShapes(spots, sign));
   return g;
 }
 
@@ -406,7 +408,7 @@ export class World {
     const water = new WaterMask(data.features.areas, data.features.lines, data.features.sea ?? [], AREA_SIZE_M);
     // last, when nothing works the ground's surface over again
     showRelief(model.terrain.surface.geometry);
-    const signs = stopSigns(stops, (x, y) => surfaceY(model, x, y), roads, subwayLetter(centre.lat, centre.lon));
+    const signs = stopSigns(stops, (x, y) => surfaceY(model, x, y), roads, subwayLetter(centre.lat, centre.lon), stopSign(centre.lat, centre.lon));
     model.group.add(signs);
     const world = new World(centre, model, roads, solids, water, new Streams(data.features.lines), ribbons, stops, signs, buildings.length);
     world.buildings = walls;
