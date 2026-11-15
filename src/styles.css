@@ -289,3 +289,12 @@ body.touch #btn-radio { font-size: 15px; padding: 13px 13px; right: calc(196px +
 body.touch #radio-bar { top: calc(132px + env(safe-area-inset-top)); font-size: 15px; }
 /* the little map, if it lives top right, makes room for the bar while the radio plays */
 html body.radio-on #minimap[data-corner='tr'] { top: calc(168px + env(safe-area-inset-top)); }
+#account { margin: 12px 0 2px; }
+#account[hidden], #room[hidden] { display: none; }
+#cloud-form { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 4px; }
+#cloud-form input, #cloud-url, #room-link { flex: 1 1 150px; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #181b20; color: var(--ink); font: inherit; font-size: 16px; }
+#cloud-url, #room-link { width: 100%; box-sizing: border-box; margin-top: 6px; }
+#cloud-url[hidden], #room-link[hidden] { display: none; }
+#room { margin: 4px 0 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+#room-board { margin: 8px 0 0; padding-left: 22px; }
+#room-board li { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; }

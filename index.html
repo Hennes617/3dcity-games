@@ -103,7 +103,7 @@
           <button class="primary">Go</button>
         </form>
         <div class="places" id="places"></div>
-        <!-- empty and hidden in the free game: where a sign-in for paying players is put, once there is one -->
+        <!-- saving the game online under a name: optional, filled in by cloudUi.ts -->
         <div id="account" hidden></div>
         <p class="small" id="where" hidden>This page carries the map of central Berlin, about 3 km across. The full game loads any city.</p>
         <div id="thin" hidden>
@@ -156,6 +156,12 @@
             <p class="small" id="challenge-note"></p>
             <p class="small" id="challenge-tally">Links are counted: one when made, one when opened, with the region of the map the run is in. Nothing about you or your friend is kept.</p>
             <input id="challenge-link" type="text" readonly hidden aria-label="Link to this run" />
+          </div>
+          <div id="room" hidden>
+            <button id="btn-room">Make a room for up to 8 players</button>
+            <p class="small" id="room-note"></p>
+            <input id="room-link" type="text" readonly hidden aria-label="Link to this room" />
+            <ol id="room-board"></ol>
           </div>
         </div>
         <ol id="board"></ol>
