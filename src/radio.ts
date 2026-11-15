@@ -1,0 +1,187 @@
+/**
+ * A car radio that plays real stations of the town you drive in. A trial: switched on with
+ * `?try=radio` in the address and remembered by the browser until `?try=noradio`. Without it
+ * there is no button, and nothing here contacts anyone.
+ *
+ * Which stations there are comes from Radio Browser (radio-browser.info), a directory kept by
+ * volunteers: the game asks it for stations near the place, the most listened to first. What is
+ * heard comes straight from each station's own public stream, unchanged; the game keeps and
+ * passes on nothing. Pressing the button therefore contacts the directory and then the station.
+ *
+ * Only streams at a secure address can play on this page, and a station that does not start
+ * within a few seconds is skipped.
+ */
+
+const KEPT = '3da-radio';
+/** the directory's servers, tried in turn */
+const SERVERS = ['https://de1.api.radio-browser.info', 'https://nl1.api.radio-browser.info', 'https://at1.api.radio-browser.info'];
+const NEAR_M = 60_000;
+const FAR_M = 300_000;
+const START_WITHIN_MS = 9000;
+
+interface Station {
+  id: string;
+  name: string;
+  url: string;
+}
+
+/** Whether the trial is on in this browser. Reads the address once and remembers. */
+export function radioOn(): boolean {
+  try {
+    const tries = (new URLSearchParams(location.search).get('try') ?? '').split(',');
+    if (tries.includes('radio')) localStorage.setItem(KEPT, '1');
+    if (tries.includes('noradio')) localStorage.removeItem(KEPT);
+    return localStorage.getItem(KEPT) === '1';
+  } catch {
+    return false;
+  }
+}
+
+async function ask(path: string): Promise<unknown> {
+  let last: unknown = null;
+  for (const server of SERVERS) {
+    try {
+      const res = await fetch(server + path, { signal: AbortSignal.timeout(8000) });
+      if (res.ok) return await res.json();
+      last = new Error(`the directory answered ${res.status}`);
+    } catch (err) {
+      last = err;
+    }
+  }
+  throw last;
+}
+
+/** Stations around a place that can play here, the most listened to first. */
+async function stationsNear(lat: number, lon: number): Promise<Station[]> {
+  const probe = document.createElement('audio');
+  const hls = probe.canPlayType('application/vnd.apple.mpegurl') !== '';
+  for (const reach of [NEAR_M, FAR_M]) {
+    const list = (await ask(
+      `/json/stations/search?geo_lat=${lat.toFixed(3)}&geo_long=${lon.toFixed(3)}&geo_distance=${reach}&hidebroken=true&is_https=true&order=clickcount&reverse=true&limit=40`,
+    )) as Array<Record<string, unknown>>;
+    const seen = new Set<string>();
+    const out: Station[] = [];
+    for (const s of Array.isArray(list) ? list : []) {
+      const url = String(s.url_resolved ?? '');
+      const name = String(s.name ?? '').trim();
+      if (!url.startsWith('https://') || !name || seen.has(name.toLowerCase())) continue;
+      // a playlist stream plays only where the browser can read it by itself
+      if (Number(s.hls) === 1 && !hls) continue;
+      seen.add(name.toLowerCase());
+      out.push({ id: String(s.stationuuid ?? ''), name: name.slice(0, 40), url });
+    }
+    if (out.length >= 3 || reach === FAR_M) return out;
+  }
+  return [];
+}
+
+/**
+ * Put the radio's button and its bar to work. `place` gives where the player is on the earth
+ * (null before a town is loaded); `say` shows a short message.
+ */
+export function wireRadio(button: HTMLButtonElement, bar: HTMLElement, place: () => { lat: number; lon: number } | null, say: (text: string, kind?: 'good' | 'bad' | 'info') => void): void {
+  if (!radioOn()) return;
+  button.hidden = false;
+  const audio = new Audio();
+  audio.preload = 'none';
+  let stations: Station[] = [];
+  let at = 0;
+  let on = false;
+  let askedFor: { lat: number; lon: number } | null = null;
+  let giveUp = 0;
+  let failed = 0;
+  const nameEl = bar.querySelector<HTMLElement>('.name')!;
+  const nextEl = bar.querySelector<HTMLButtonElement>('.next')!;
+
+  const show = (text: string): void => {
+    nameEl.textContent = text;
+    bar.hidden = !on;
+    button.classList.toggle('on', on);
+    document.body.classList.toggle('radio-on', on);
+  };
+
+  function off(): void {
+    on = false;
+    clearTimeout(giveUp);
+    audio.pause();
+    audio.removeAttribute('src');
+    audio.load();
+    show('');
+  }
+
+  function play(): void {
+    clearTimeout(giveUp);
+    if (!stations.length) {
+      show('No station plays here');
+      return;
+    }
+    const s = stations[at % stations.length];
+    show(`${s.name} · ${(at % stations.length) + 1} of ${stations.length}`);
+    audio.src = s.url;
+    void audio.play().catch(() => undefined);
+    // a station that stays silent is skipped
+    giveUp = window.setTimeout(skip, START_WITHIN_MS);
+    // the directory asks to be told which stations are listened to
+    if (s.id) void ask(`/json/url/${s.id}`).catch(() => undefined);
+  }
+
+  function skip(): void {
+    if (!on) return;
+    failed++;
+    if (failed >= stations.length) {
+      show('No station plays here');
+      return;
+    }
+    at++;
+    play();
+  }
+
+  audio.addEventListener('playing', () => {
+    clearTimeout(giveUp);
+    failed = 0;
+  });
+  audio.addEventListener('error', () => on && skip());
+
+  async function turnOn(): Promise<void> {
+    const p = place();
+    if (!p) return;
+    on = true;
+    // a new town, new stations: asked again when you have come 30 km
+    const far = !askedFor || Math.hypot(askedFor.lat - p.lat, (askedFor.lon - p.lon) * Math.cos((p.lat * Math.PI) / 180)) * 111 > 30;
+    if (far) {
+      show('Looking for stations…');
+      try {
+        stations = await stationsNear(p.lat, p.lon);
+        askedFor = p;
+        at = 0;
+      } catch {
+        stations = [];
+        on = false;
+        show('');
+        say('The radio could not reach the station list', 'bad');
+        return;
+      }
+      if (!on) return;
+    }
+    failed = 0;
+    play();
+  }
+
+  button.addEventListener('click', () => {
+    button.blur();
+    if (on) off();
+    else void turnOn();
+  });
+  nextEl.addEventListener('click', () => {
+    if (!on || !stations.length) return;
+    failed = 0;
+    at++;
+    play();
+  });
+  // silent while the game is out of sight
+  document.addEventListener('visibilitychange', () => {
+    if (!on) return;
+    if (document.hidden) audio.pause();
+    else void audio.play().catch(() => undefined);
+  });
+}

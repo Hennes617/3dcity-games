@@ -384,7 +384,7 @@ export class World {
       // a building at a well-known sight stays bare
       const famous = sightsIn(makeProjector(centre), AREA_SIZE_M / 2);
       model.onBuildings = (mesh) => {
-        styleWindows(mesh.geometry, famous);
+        styleWindows(mesh.geometry, famous, centre.lat, centre.lon);
         addWindows(mesh.material);
       };
     }

@@ -9,6 +9,7 @@ import { countMade, countOpened } from './linkCount';
 import { Sound } from './sound';
 import { addonHost } from './addon';
 import { fullNote } from './full';
+import { wireRadio } from './radio';
 import { serviceIcon, type ServiceKind } from './game/services';
 import { Controls } from './game/input';
 import { Minimap } from './game/minimap';
@@ -896,3 +897,6 @@ else if (linked) {
   $<HTMLInputElement>('q').value = linked;
   void search(linked);
 }
+
+// a trial (`?try=radio`): a car radio with stations of the town
+wireRadio($<HTMLButtonElement>('btn-radio'), $('radio-bar'), () => (game?.world ? game.world.centre : null), toast);

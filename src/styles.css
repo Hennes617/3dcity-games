@@ -277,3 +277,15 @@ html body.touch #minimap[data-corner='br'] { right: calc(150px + env(safe-area-i
 
 /* the subway's mark in the legends: the sign's blue disc with a dark rim, like on the maps */
 .dot.sub { border-radius: 50%; background: #1f6fd6; box-shadow: 0 0 0 2px #16181c; }
+
+/* the radio trial: a button left of pause, and a bar with the station's name under the top buttons */
+#btn-radio { pointer-events: auto; position: absolute; top: calc(12px + env(safe-area-inset-top)); right: calc(166px + env(safe-area-inset-right)); color: var(--ink); font-size: 12px; font-weight: 700; line-height: 1.5; padding: 9px 10px; cursor: pointer; letter-spacing: 1px; }
+#btn-radio.on { color: #ffd400; border-color: #ffd400; }
+body.touch #btn-radio { font-size: 15px; padding: 13px 13px; right: calc(196px + env(safe-area-inset-right)); }
+#radio-bar { pointer-events: auto; position: absolute; top: calc(118px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); display: flex; align-items: center; gap: 10px; max-width: min(320px, calc(100vw - 24px)); font-size: 13px; }
+#radio-bar[hidden] { display: none; }
+#radio-bar .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#radio-bar .next { font: inherit; font-weight: 700; color: #1c1f24; background: #ffd400; border: 0; border-radius: 8px; padding: 5px 9px; cursor: pointer; flex: none; }
+body.touch #radio-bar { top: calc(132px + env(safe-area-inset-top)); font-size: 15px; }
+/* the little map, if it lives top right, makes room for the bar while the radio plays */
+html body.radio-on #minimap[data-corner='tr'] { top: calc(168px + env(safe-area-inset-top)); }
