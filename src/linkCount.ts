@@ -1,9 +1,10 @@
 /**
- * A tally of challenge links: how many were made and how many were opened. It is the one thing
- * the game ever counts, and the line under the challenge button says so.
+ * A tally of challenge links, how many were made and how many were opened, and of visitors who
+ * arrive by the link under a video (`?ref=youtube`). These are the only things the game ever
+ * counts; the line under the challenge button and the README say so.
  *
- * What is sent is the single word "made" or "opened". Not the link, not a name, not a place. The
- * tally is two numbers a day. Nothing is kept in the player's browser for it, so a link opened
+ * What is sent is the single word "made", "opened" or "youtube". Not the link, not a name, not a place. The
+ * tally is three numbers a day. Nothing is kept in the player's browser for it, so a link opened
  * twice is counted twice. Like any request, it reaches the server from the sender's internet
  * address, which the tally does not keep.
  */
@@ -12,7 +13,7 @@ const TALLY = 'https://lecaoamodyjubwuvhpcq.supabase.co/rest/v1/rpc/count_link';
 // the store's publishable key: meant to be public, it lets a browser add one to the tally and nothing else
 const KEY = 'sb_publishable__R5VVIzkFXK-ozBm18IYjg_UTw7guWe';
 
-function count(kind: 'made' | 'opened'): void {
+function count(kind: 'made' | 'opened' | 'youtube'): void {
   // nothing waits for this and nothing depends on it
   void fetch(TALLY, {
     method: 'POST',
@@ -36,4 +37,9 @@ export function countMade(code: string): void {
 /** The game was opened by a challenge link. */
 export function countOpened(): void {
   count('opened');
+}
+
+/** The game was opened by the link under a video. The tag is all that is looked at. */
+export function countArrival(query: URLSearchParams): void {
+  if (query.get('ref') === 'youtube') count('youtube');
 }
