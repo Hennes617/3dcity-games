@@ -5,7 +5,7 @@
 
 import { Game, RUN_JOBS, type Course, type Hud } from './game/game';
 import { linkHome, packChallenge, readChallenge, type Challenge } from './challenge';
-import { countMade, countOpened } from './linkCount';
+import { countArrival, countMade, countOpened } from './linkCount';
 import { Sound } from './sound';
 import { addonHost } from './addon';
 import { fullNote } from './full';
@@ -890,6 +890,7 @@ const fromLink = parseLatLon(linked);
 const code = BAKED ? null : new URLSearchParams(location.search).get('c');
 const sentRun = code ? readChallenge(code) : null;
 if (sentRun) countOpened();
+if (!BAKED) countArrival(new URLSearchParams(location.search));
 if (sentRun) void go(sentRun.course.start, sentRun.place || undefined, sentRun);
 else if (fromLink) void go(fromLink);
 else if (linked) {
