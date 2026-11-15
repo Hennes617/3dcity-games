@@ -9,7 +9,11 @@
     <!-- This page only forwards to the game. It stores nothing and contacts nobody. -->
     <meta http-equiv="refresh" content="0; url=https://yourplace3d.github.io/3dcity-games/?ref=youtube" />
     <script>
-      location.replace('https://yourplace3d.github.io/3dcity-games/?ref=youtube');
+      // whatever follows the short address goes along: a place (#52.52,13.405 or #Hamburg) and a
+      // challenge (?c=...)
+      var q = new URLSearchParams(location.search);
+      q.set('ref', 'youtube');
+      location.replace('https://yourplace3d.github.io/3dcity-games/?' + q.toString() + location.hash);
     </script>
     <style>
       body { margin: 0; background: #16181c; color: #f4f1ea; font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif; }
