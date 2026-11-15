@@ -334,7 +334,7 @@ export class World {
     await breathe();
     const buildings = data.buildings.map((b) => ({ poly: b.poly, height: gameHeight(b.height), minHeight: gameHeight(b.minHeight), estimated: false, heightKnown: true }));
     // roofs out of the ground and the sea to sea level, before anything is built on it
-    calmGround(grid, buildings, data.features.sea);
+    calmGround(grid, data.buildings, data.features.sea);
     const model = new CityModel(grid, texturePx, '#ffcc00');
     model.setExaggeration(1);
     model.showPin(false);
