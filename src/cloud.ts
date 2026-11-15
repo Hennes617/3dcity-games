@@ -40,13 +40,13 @@ const set = (k: string, v: string | null): void => {
   }
 };
 
-async function call<T>(fn: string, args: Record<string, unknown>, leaving = false): Promise<T> {
+async function call<T>(fn: string, args: Record<string, unknown>, leaving = false, wait = 12000): Promise<T> {
   const res = await fetch(API + fn, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: KEY, Authorization: `Bearer ${KEY}` },
     body: JSON.stringify(args),
     keepalive: leaving,
-    ...(leaving ? {} : { signal: AbortSignal.timeout(12000) }),
+    ...(leaving ? {} : { signal: AbortSignal.timeout(wait) }),
   });
   if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { message?: string }).message ?? `error ${res.status}`);
   return (res.status === 204 ? null : await res.json()) as T;
@@ -178,7 +178,8 @@ export async function arrive(): Promise<'reload' | 'ok'> {
   const code = get(CODE);
   if (!code || !get(NAME)) return 'ok';
   try {
-    const got = await call<{ updated_at: string } | null>('save_get', { code });
+    // the game must not wait long for this: an invited player's run starts at once
+    const got = await call<{ updated_at: string } | null>('save_get', { code }, false, 2500);
     if (got && got.updated_at !== get(STAMP) && Date.parse(got.updated_at) > Date.parse(get(STAMP) ?? '1970-01-01')) return (await pull(code)) ? 'reload' : 'ok';
   } catch {
     /* offline: play on with what is here */
