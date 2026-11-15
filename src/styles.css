@@ -264,3 +264,16 @@ body.touch #btn-sound { font-size: 22px; padding: 12px 15px; right: calc(72px + 
 #btn-pause { pointer-events: auto; position: absolute; top: calc(12px + env(safe-area-inset-top)); right: calc(112px + env(safe-area-inset-right)); color: var(--ink); font-size: 13px; line-height: 1.4; padding: 9px 12px; cursor: pointer; letter-spacing: 1px; }
 body.touch #btn-pause { font-size: 16px; padding: 13px 15px; right: calc(132px + env(safe-area-inset-right)); }
 #challenge-tally { margin: 6px 0 0; }
+
+/* The little map in the corner the player dragged it to. Each corner keeps clear of what else lives
+   there: the cash panel (top left), the buttons and the speed (top right), the touch buttons (bottom right). */
+#minimap { touch-action: none; }
+#minimap.moving { opacity: 0.85; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6); }
+html body #minimap[data-corner='tl'] { left: calc(12px + env(safe-area-inset-left)); right: auto; top: calc(150px + env(safe-area-inset-top)); bottom: auto; }
+html body #minimap[data-corner='tr'] { left: auto; right: calc(12px + env(safe-area-inset-right)); top: calc(118px + env(safe-area-inset-top)); bottom: auto; }
+html body #minimap[data-corner='bl'] { left: calc(12px + env(safe-area-inset-left)); right: auto; top: auto; bottom: calc(12px + env(safe-area-inset-bottom)); }
+html body #minimap[data-corner='br'] { left: auto; right: calc(12px + env(safe-area-inset-right)); top: auto; bottom: calc(12px + env(safe-area-inset-bottom)); }
+html body.touch #minimap[data-corner='br'] { right: calc(150px + env(safe-area-inset-right)); }
+
+/* the subway's mark in the legends: the sign's blue disc with a dark rim, like on the maps */
+.dot.sub { border-radius: 50%; background: #1f6fd6; box-shadow: 0 0 0 2px #16181c; }

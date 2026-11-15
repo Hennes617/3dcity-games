@@ -16,6 +16,7 @@ import { Solids, Streams, WaterMask } from './solids';
 import { sightsIn, type Sight } from '../landmarks';
 import { localColours } from './localColours';
 import { calmGround } from './ground';
+import { readStreetNames, type StreetLabel } from './streetNames';
 import { subwayEntrance, subwayLetter } from './subwaySign';
 import { addWindows, styleWindows, windowsOn } from './windows';
 import { inventServices, readReserved, readServices, serviceIcon, type Service } from './services';
@@ -321,6 +322,9 @@ export class World {
   /** schools, places of worship, hospitals and the like: where they lie, so an add-on can leave them alone */
   reserved: Array<{ x: number; y: number }> = [];
 
+  /** the names of the main streets, for the big map */
+  streetNames: StreetLabel[] = [];
+
   /** symbols an add-on has put on this square, for the maps */
   readonly marks: Array<{ x: number; y: number; icon: HTMLCanvasElement }> = [];
 
@@ -406,6 +410,7 @@ export class World {
     model.group.add(signs);
     const world = new World(centre, model, roads, solids, water, new Streams(data.features.lines), ribbons, stops, signs, buildings.length);
     world.buildings = walls;
+    world.streetNames = readStreetNames(tiles, world.proj, AREA_SIZE_M / 2);
     world.reserved = readReserved(tiles, world.proj, AREA_SIZE_M / 2);
     // every real one the loaded map holds, to judge by; those in the square and the made-up ones are kept
     const real = readServices(tiles, world.proj, 1e9);

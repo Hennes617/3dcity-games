@@ -807,7 +807,68 @@ $('btn-menu').addEventListener('click', () => {
   setScreen('start');
 });
 $('btn-resume').addEventListener('click', () => setScreen('play'));
-$('minimap').addEventListener('click', () => showMap(true));
+// The little map can be put in any corner: press it and drag. A short tap still opens the big map.
+{
+  const mini = $('minimap');
+  const KEPT = '3da-minimap-corner';
+  const CORNERS = ['tl', 'tr', 'bl', 'br'];
+  try {
+    const c = localStorage.getItem(KEPT);
+    if (c && CORNERS.includes(c)) mini.dataset.corner = c;
+  } catch {
+    /* no store: it starts where it always did */
+  }
+  let from: { x: number; y: number; left: number; top: number } | null = null;
+  let dragging = false;
+  let dragged = false;
+  mini.addEventListener('pointerdown', (e) => {
+    const box = mini.getBoundingClientRect();
+    const home = (mini.offsetParent ?? document.body).getBoundingClientRect();
+    from = { x: e.clientX, y: e.clientY, left: box.left - home.left, top: box.top - home.top };
+    dragging = false;
+    mini.setPointerCapture(e.pointerId);
+  });
+  mini.addEventListener('pointermove', (e) => {
+    if (!from) return;
+    const dx = e.clientX - from.x;
+    const dy = e.clientY - from.y;
+    if (!dragging && Math.hypot(dx, dy) < 12) return;
+    dragging = true;
+    mini.classList.add('moving');
+    mini.style.left = `${from.left + dx}px`;
+    mini.style.top = `${from.top + dy}px`;
+    mini.style.right = 'auto';
+    mini.style.bottom = 'auto';
+  });
+  const drop = (): void => {
+    if (!from) return;
+    from = null;
+    if (!dragging) return;
+    dragging = false;
+    dragged = true;
+    // the corner its middle is nearest to
+    const box = mini.getBoundingClientRect();
+    const corner = (box.top + box.height / 2 < innerHeight / 2 ? 't' : 'b') + (box.left + box.width / 2 < innerWidth / 2 ? 'l' : 'r');
+    mini.classList.remove('moving');
+    mini.style.left = mini.style.top = mini.style.right = mini.style.bottom = '';
+    mini.dataset.corner = corner;
+    try {
+      localStorage.setItem(KEPT, corner);
+    } catch {
+      /* it stays there for this visit */
+    }
+  };
+  mini.addEventListener('pointerup', drop);
+  mini.addEventListener('pointercancel', drop);
+  mini.addEventListener('click', () => {
+    // the press that ended a drag is not a tap
+    if (dragged) {
+      dragged = false;
+      return;
+    }
+    showMap(true);
+  });
+}
 $('bigmap-canvas').addEventListener('click', () => showMap(false));
 $('btn-map-close').addEventListener('click', () => showMap(false));
 $('btn-line').addEventListener('click', toggleRoute);

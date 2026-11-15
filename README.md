@@ -64,6 +64,9 @@ the streets, buildings, water and hills come from the same map squares as
   four badges). More heat brings more police cars. Stay out of their sight and it cools off; stop next to
   one and you're caught and fined.
 - An arrow at the edge of the screen points to the drop-off (yellow), or to the nearest package (blue).
+- **The little map can be moved:** press it and drag it to any corner; it stays there on that device. A
+  short tap still opens the big map. **The big map names the main streets** (the bigger streets and
+  avenues, written along them); the street view and the little map stay without names.
 - **The little map** in the corner shows the streets around you, north up, with the way to the next ring
   drawn in, the rings, the subway entrances, and the police while they're after you. Tap it, or press `M`, for
   a big map of all the loaded streets (1.5 km across); the game waits while it is open. Press `G`, or the

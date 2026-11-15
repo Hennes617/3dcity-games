@@ -131,6 +131,35 @@ export class Minimap {
       const r = (this.whole ? 8 : 5.5) * dpr;
       ctx.drawImage(subwayIcon(subwayLetter(world.centre.lat, world.centre.lon)), sx - r, sy - r, r * 2, r * 2);
     }
+    // the big map names the main streets: along the street, and never upside down
+    if (this.whole) {
+      ctx.font = `600 ${Math.round(10.5 * dpr)}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+      for (const l of world.streetNames) {
+        const w = ctx.measureText(l.name).width;
+        // a name longer than its street's piece on the map is left out
+        if (w > l.room * m * 1.15) continue;
+        const [sx, sy] = at(l.x, l.y);
+        let turn = -l.angle;
+        // none cut off by the map's edge
+        const reachX = (Math.abs(Math.cos(turn)) * w) / 2 + 6 * dpr;
+        const reachY = (Math.abs(Math.sin(turn)) * w) / 2 + 6 * dpr;
+        if (sx < reachX || sx > W - reachX || sy < reachY || sy > W - reachY) continue;
+        if (turn > Math.PI / 2) turn -= Math.PI;
+        if (turn < -Math.PI / 2) turn += Math.PI;
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(turn);
+        ctx.lineWidth = 3 * dpr;
+        ctx.strokeStyle = 'rgba(22, 24, 28, 0.9)';
+        ctx.strokeText(l.name, 0, 0);
+        ctx.fillStyle = l.rank <= 1 ? '#f4f1ea' : '#c9c4b8';
+        ctx.fillText(l.name, 0, 0);
+        ctx.restore();
+      }
+    }
     // fuel, fire and police stations: their symbol
     for (const s of world.services) {
       const [sx, sy] = at(s.x, s.y);
