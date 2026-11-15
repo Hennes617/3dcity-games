@@ -7,7 +7,7 @@ import { Game, RUN_JOBS, type Course, type Hud } from './game/game';
 import { linkHome, packChallenge, readChallenge, type Challenge } from './challenge';
 import { cameByVideo, countMade, countOpened, playingAt } from './linkCount';
 import { arrive as cloudArrive, changed } from './cloud';
-import { wireCloud, wireRoom, type RoomUi } from './cloudUi';
+import { wireCloud } from './cloudUi';
 import { Sound } from './sound';
 import { addonHost } from './addon';
 import { fullNote } from './full';
@@ -49,7 +49,6 @@ let busy = false;
 let placeName = '';
 /** the run someone sent that is being played: its name, score and time are the ones to beat */
 let rival: Challenge | null = null;
-let roomUi: RoomUi | null = null;
 /** the place has a name to announce, not only coordinates */
 let placeKnown = false;
 /** the name has been shown since this place was loaded */
@@ -314,7 +313,6 @@ let arriveT = 0;
 function withoutChallenge(): string {
   const q = new URLSearchParams(location.search);
   q.delete('c');
-  q.delete('room');
   const text = q.toString().replace(/=(?=&|$)/g, '');
   return location.pathname + (text ? `?${text}` : '');
 }
@@ -489,18 +487,6 @@ function showBoard(run: Score | null): void {
     $('result-form').hidden = false;
     $<HTMLInputElement>('result-name').value = lastName();
   }
-  roomUi?.after(
-    run && freshCourse && freshCourse.legs.length === (run.jobs ?? RUN_JOBS) && !BAKED
-      ? {
-          course: packChallenge({ name: run.name || lastName(), score: run.score, seconds: run.seconds, place: run.place, course: freshCourse }),
-          place: run.place,
-          score: run.score,
-          seconds: run.seconds,
-          hash: `#${freshCourse.start.lat.toFixed(5)},${freshCourse.start.lon.toFixed(5)}`,
-        }
-      : null,
-    !!rival,
-  );
   $('btn-newrun').hidden = !game?.world;
   $('btn-close').textContent = document.body.dataset.screen !== 'play' ? 'Close' : run ? 'Continue with open jobs' : 'Keep driving';
   drawBoard();
@@ -903,14 +889,7 @@ addEventListener('keydown', (e) => {
 $('btn-anyway').addEventListener('click', begin);
 addEventListener('pagehide', () => save());
 
-// saving online and rooms, for a player who enters a name; without one none of it contacts anyone
-if (!BAKED)
-  roomUi = wireRoom(
-      { box: $('room'), button: $<HTMLButtonElement>('btn-room'), note: $('room-note'), link: $<HTMLInputElement>('room-link'), board: $('room-board') },
-      linkHome(location),
-      () => $<HTMLInputElement>('result-name').value,
-      (score, seconds) => `${fmtMoney(score)} · ${fmtTime(seconds)}`,
-    );
+// saving online, for a player who enters a name; without one none of it contacts anyone
 if (!BAKED) {
   // a game saved on another device comes first: it replaces what this browser has, then the page starts again
   if ((await cloudArrive()) === 'reload') location.reload();

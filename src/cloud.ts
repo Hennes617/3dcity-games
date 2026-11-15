@@ -1,7 +1,6 @@
 /**
- * Saving a game on a server, and rooms where up to eight players compare one run. Both are for a
- * player who has entered a name; without one the game plays exactly as before and none of this
- * contacts anyone.
+ * Saving a game on a server, for a player who has entered a name. Without one the game plays
+ * exactly as before and none of this contacts anyone.
  *
  * There is no account, no email and no password. When a player turns saving on, the browser makes
  * a long random save code and keeps it. The saved game on the server belongs to whoever holds
@@ -9,8 +8,7 @@
  * game to another device; anyone given that link has the game, so it is for the player alone.
  *
  * What is saved is what the game already keeps in this browser: cash, deliveries, the scoreboard,
- * settings, and what add-ons keep. In a room the name, score and time of a run are shown to the
- * others who have the room's link. Scores come from the player's browser as they are.
+ * settings, and what add-ons keep.
  */
 
 const API = 'https://lecaoamodyjubwuvhpcq.supabase.co/rest/v1/rpc/';
@@ -52,7 +50,7 @@ async function call<T>(fn: string, args: Record<string, unknown>, leaving = fals
   return (res.status === 204 ? null : await res.json()) as T;
 }
 
-/** The name the player saves and joins rooms under, or '' when saving is off. */
+/** The name the player saves under, or '' when saving is off. */
 export const savedName = (): string => (get(CODE) ? (get(NAME) ?? '') : '');
 export const savingOn = (): boolean => !!get(CODE) && !!get(NAME);
 
@@ -135,7 +133,7 @@ export function deviceLink(home: string): string {
   return `${home}?save=${get(CODE) ?? ''}`;
 }
 
-/** Stop saving and take the saved game, and the player's results in rooms, off the server. */
+/** Stop saving and take the saved game off the server. */
 export async function stopSaving(): Promise<boolean> {
   const code = get(CODE);
   if (!code) return true;
@@ -185,38 +183,6 @@ export async function arrive(): Promise<'reload' | 'ok'> {
     /* offline: play on with what is here */
   }
   return 'ok';
-}
-
-// Rooms -------------------------------------------------------------------------------------------
-
-export interface RoomResult {
-  name: string;
-  score: number;
-  seconds: number;
-}
-export interface Room {
-  id: string;
-  /** the same text a challenge link carries after `c=` */
-  course: string;
-  place: string;
-  results: RoomResult[];
-}
-
-export const ROOM_SIZE = 8;
-
-/** Make a room for this run. Needs saving to be on. Resolves to the room's id, for `?room=<id>`. */
-export async function roomCreate(course: string, place: string): Promise<string> {
-  return call<string>('room_create', { code: get(CODE), course, place });
-}
-
-/** The room and its board, best first, or null when there is no such room. */
-export async function roomGet(id: string): Promise<Room | null> {
-  return /^[0-9a-f]{12}$/.test(id) ? call<Room | null>('room_get', { room: id }) : null;
-}
-
-/** Put the player's result in the room. Rejects with 'room is full' when eight others are in. */
-export async function roomSubmit(id: string, score: number, seconds: number): Promise<Room> {
-  return call<Room>('room_submit', { room: id, code: get(CODE), name: get(NAME), score: Math.round(score), seconds: Math.round(seconds) });
 }
 
 if (typeof document !== 'undefined') {
