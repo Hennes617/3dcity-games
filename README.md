@@ -99,7 +99,8 @@ the streets, buildings, water and hills come from the same map squares as
   shutters and a rail below the window around the Mediterranean, and so on: `src/game/windows.ts`).
 - **A trial: a car radio** with `?try=radio` (until `?try=noradio`): an FM button plays real stations of
   the town, found through the volunteer directory Radio Browser and heard straight from each station's
-  own stream. Pressing it contacts the directory and the station; without the trial nothing does
+  own stream. Pressing it contacts the directory and the station; without the trial nothing does.
+  Switched on, it stays on: it plays again in the next car and on the next visit, until FM is pressed again
   (`src/radio.ts`).
 - **Hills show and are felt.** The light treats every slope as about three times steeper than it is, so the
   side of a hill away from the sun is clearly darker. Streets that climb more than 1 in 10 carry arrowheads

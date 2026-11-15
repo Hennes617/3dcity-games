@@ -9,12 +9,22 @@
  * passes on nothing. Pressing the button therefore contacts the directory and then the station.
  *
  * It is a car radio: it is heard while you sit in a car and falls silent when you get out.
+ * Switched on, it stays on: it plays again in the next car, and on the next visit.
  *
  * Only streams at a secure address can play on this page, and a station that does not start
  * within a few seconds is skipped.
  */
 
 const KEPT = '3da-radio';
+/** whether the radio was left switched on: it then plays again in the next car, on the next visit too */
+const LEFT_ON = '3da-radio-on';
+/**
+ * A moment of silence. A browser, the iPad's above all, lets a page start sound only in answer to
+ * a tap or a key. The stations start later than that: after the list has arrived, or when you get
+ * into a car. Playing this at the tap makes the player one the browser lets start by itself.
+ */
+const SILENCE =
+  'data:audio/wav;base64,UklGRkQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YSADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==';
 /** the directory's servers, tried in turn */
 const SERVERS = ['https://de1.api.radio-browser.info', 'https://nl1.api.radio-browser.info', 'https://at1.api.radio-browser.info'];
 const NEAR_M = 60_000;
@@ -104,6 +114,26 @@ export function wireRadio(
   const nameEl = bar.querySelector<HTMLElement>('.name')!;
   const nextEl = bar.querySelector<HTMLButtonElement>('.next')!;
 
+  let primed = false;
+  /** Called in answer to a tap or a key: from then on the browser lets the radio start by itself. */
+  const prime = (): void => {
+    if (primed) return;
+    primed = true;
+    audio.src = SILENCE;
+    // refused (it was no tap after all): try again at the next one. Cut short by a station starting: fine.
+    void audio.play().catch((err: unknown) => {
+      if ((err as { name?: string })?.name === 'NotAllowedError') primed = false;
+    });
+  };
+  const keep = (v: boolean): void => {
+    try {
+      if (v) localStorage.setItem(LEFT_ON, '1');
+      else localStorage.removeItem(LEFT_ON);
+    } catch {
+      /* not remembered in a private window */
+    }
+  };
+
   const show = (text: string): void => {
     nameEl.textContent = text;
     bar.hidden = !on;
@@ -149,10 +179,12 @@ export function wireRadio(
   }
 
   audio.addEventListener('playing', () => {
+    if (audio.currentSrc.startsWith('data:')) return;
     clearTimeout(giveUp);
     failed = 0;
   });
-  audio.addEventListener('error', () => on && skip());
+  // the moment of silence is no station: nothing to skip when it ends or fails
+  audio.addEventListener('error', () => on && !audio.currentSrc.startsWith('data:') && skip());
 
   async function turnOn(): Promise<void> {
     const p = place();
@@ -188,9 +220,35 @@ export function wireRadio(
 
   button.addEventListener('click', () => {
     button.blur();
-    if (on) off();
-    else void turnOn();
+    if (on) {
+      off();
+      keep(false);
+    } else {
+      prime();
+      keep(true);
+      void turnOn();
+    }
   });
+  // left on last time: on again, silent until you sit in a car. The first tap or key of the visit,
+  // whatever it is for, is what lets it start then.
+  let leftOn = false;
+  try {
+    leftOn = localStorage.getItem(LEFT_ON) === '1';
+  } catch {
+    /* off */
+  }
+  if (leftOn) {
+    on = true;
+    waiting = true;
+    show('The radio plays in a car');
+    const first = (): void => {
+      removeEventListener('pointerdown', first, true);
+      removeEventListener('keydown', first, true);
+      if (on) prime();
+    };
+    addEventListener('pointerdown', first, true);
+    addEventListener('keydown', first, true);
+  }
   nextEl.addEventListener('click', () => {
     if (!on || waiting || !stations.length) return;
     failed = 0;
