@@ -15,6 +15,8 @@ import { RoadNet } from './roads';
 import { Solids, Streams, WaterMask } from './solids';
 import { sightsIn, type Sight } from '../landmarks';
 import { localColours } from './localColours';
+import { calmGround } from './ground';
+import { addWindows, windowsOn } from './windows';
 import { inventServices, readReserved, readServices, serviceIcon, type Service } from './services';
 
 export const AREA_SIZE_M = 1500;
@@ -331,6 +333,8 @@ export class World {
     const stops = readStops(tiles, makeProjector(centre), AREA_SIZE_M / 2 - 8);
     await breathe();
     const buildings = data.buildings.map((b) => ({ poly: b.poly, height: gameHeight(b.height), minHeight: gameHeight(b.minHeight), estimated: false, heightKnown: true }));
+    // roofs out of the ground and the sea to sea level, before anything is built on it
+    calmGround(grid, buildings, data.features.sea);
     const model = new CityModel(grid, texturePx, '#ffcc00');
     model.setExaggeration(1);
     model.showPin(false);
@@ -340,6 +344,8 @@ export class World {
     model.terrain.surface.castShadow = false;
     model.terrain.base.visible = false;
     await breathe();
+    // a trial: windows and doors on the walls
+    if (windowsOn()) model.onBuildings = (mesh) => addWindows(mesh.material);
     model.setBuildingSpecs(buildings);
     await breathe();
     model.setFeatures(data.features);
@@ -366,7 +372,12 @@ export class World {
     // every real one the loaded map holds, to judge by; those in the square and the made-up ones are kept
     const real = readServices(tiles, world.proj, 1e9);
     const reach = AREA_SIZE_M / 2 - 8;
-    world.services.push(...real.filter((r) => Math.abs(r.x) < reach && Math.abs(r.y) < reach), ...inventServices(real, world.proj, reach, roads));
+    // Stations stand apart: of several of one kind within 250 m only the first is kept (three fuel
+    // stations in a row are real in places, and too much of one thing in a game), and no symbol
+    // lies within 70 m of another. The real ones come first, so a made-up one gives way.
+    for (const sv of [...real.filter((r) => Math.abs(r.x) < reach && Math.abs(r.y) < reach), ...inventServices(real, world.proj, reach, roads)]) {
+      if (!world.services.some((o) => Math.hypot(o.x - sv.x, o.y - sv.y) < (o.kind === sv.kind ? 250 : 70))) world.services.push(sv);
+    }
     // the map puts such a place on its building: the symbol lies on the roof, where it can be seen
     for (const sv of world.services) signs.add(serviceSign(sv, (x, y) => surfaceY(model, x, y) + solids.tallestNear(x, y, 5) + 0.2));
     if (!world.sights.length) world.sights.push(...townSights(tiles, world.proj, AREA_SIZE_M / 2 - 8));

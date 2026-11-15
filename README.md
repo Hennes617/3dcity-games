@@ -74,6 +74,13 @@ the streets, buildings, water and hills come from the same map squares as
   both wait at the real stops (red dots for trams, green for buses). Trains run on the railway tracks and
   brake for nothing but another train: keep off the track. At the end of a track a train or tram waits a moment and goes back the way it came. Trains have no stations yet. You can take a bus; trams stay on their rails. A blue disc is
   a subway entrance: walk in on foot and you come up at the station nearest to where you're headed.
+- **The ground is calmed before the town is built on it** (`src/game/ground.ts`). The height data is measured
+  from above, and among tall buildings it measured roofs: the ground then bulged up between them and
+  swallowed smaller houses. Around buildings every bump narrower than about 155 m is taken down to the
+  ground around it; slopes and wider hills stay. The sea is put at sea level.
+- **Stations stand apart:** of several of one kind within 250 m one is kept, and no two symbols lie within 70 m.
+- **A trial: windows and doors** on the walls, with `?try=windows` in the address (remembered until
+  `?try=nowindows`). Drawn as a pattern, not from the map.
 - **Hills show and are felt.** The light treats every slope as about three times steeper than it is, so the
   side of a hill away from the sun is clearly darker. Streets that climb more than 1 in 10 carry arrowheads
   pointing uphill. The car you drive is held back uphill and carried downhill (never so much that a hill
