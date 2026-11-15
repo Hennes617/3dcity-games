@@ -57,6 +57,25 @@ export async function sendLink(email: string): Promise<boolean> {
   }
 }
 
+/**
+ * Sign in with the link from the email, pasted here instead of opened. For a phone whose mail app
+ * opens links in another browser, and for as long as the account service cannot be told the
+ * game's address to send people back to. Resolves to whether it signed in.
+ */
+export async function useLink(link: string): Promise<boolean> {
+  if (!URL_) return false;
+  try {
+    const q = new URL(link.trim()).searchParams;
+    const token_hash = q.get('token') ?? q.get('token_hash') ?? '';
+    if (!token_hash) return false;
+    const type = q.get('type') === 'signup' ? 'signup' : q.get('type') === 'magiclink' ? 'magiclink' : 'email';
+    const { data, error } = await (await client()).auth.verifyOtp({ token_hash, type });
+    return !error && !!data.session;
+  } catch {
+    return false;
+  }
+}
+
 /** The address signed in with in this browser, or '' when there is none. */
 export async function signedInAs(): Promise<string> {
   if (!URL_) return '';
@@ -113,11 +132,19 @@ export function wireAccount(box: HTMLElement): void {
     box.innerHTML =
       '<button type="button" class="link" id="account-open">Sign in</button> <span class="small">for players of the full version. The free game needs no account.</span>' +
       '<form id="account-form" hidden><input type="email" placeholder="Your email address" autocomplete="email" required /><button>Send me a sign-in link</button></form>' +
-      '<p class="small" id="account-note" aria-live="polite"></p>';
+      '<p class="small" id="account-note" aria-live="polite"></p>' +
+      '<form id="account-paste" hidden><input type="url" placeholder="Or paste the link from the email here" autocomplete="off" required /><button>Sign in</button></form>';
     const form = box.querySelector<HTMLFormElement>('#account-form')!;
     const note = box.querySelector<HTMLElement>('#account-note')!;
     const email = form.querySelector('input')!;
     const button = form.querySelector('button')!;
+    const paste = box.querySelector<HTMLFormElement>('#account-paste')!;
+    paste.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      note.textContent = 'Signing in…';
+      if (await useLink(paste.querySelector('input')!.value)) location.reload();
+      else note.textContent = 'That link did not work. A link works once and for an hour; ask for a new one.';
+    });
     box.querySelector('#account-open')!.addEventListener('click', () => {
       form.hidden = false;
       email.focus();
@@ -133,6 +160,7 @@ export function wireAccount(box: HTMLElement): void {
         return;
       }
       form.hidden = true;
+      paste.hidden = !URL_;
       note.textContent = URL_ ? 'Look in your email: the link in it signs you in. No password needed.' : 'Preview: this is what a player would see. Nothing was sent.';
     });
   };
