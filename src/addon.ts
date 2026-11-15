@@ -1,8 +1,9 @@
 /**
  * The place where extra features plug into the game. The free game is whole without any; an
  * add-on is a separate file that the game loads when it is given its address, and that then adds
- * to the running game through the few openings `Game` offers (`actions`, `hints`) and through
- * what the game already shows of itself.
+ * to the running game through the few openings `Game` offers (`actions`, `hints`, `ticks`, `held`,
+ * `place`, `remove`, `seat`, `ring`), those of `World` (`buildings`, `mark`) and through what the
+ * game already shows of itself.
  *
  * Who is given an address is decided elsewhere: the game only loads what it is handed. On its own
  * it loads nothing, except on the developer's machine, where `?addon=<address>` names one to try.
@@ -17,7 +18,7 @@ export interface AddonHost {
   /** a short message at the top of the screen */
   toast: (text: string, kind?: 'good' | 'bad' | 'info') => void;
   /** grows when what is offered here changes in a way an add-on has to know about */
-  api: 1;
+  api: 2;
 }
 
 /** An add-on file's default export. */

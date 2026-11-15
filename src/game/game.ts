@@ -237,6 +237,10 @@ export class Game {
    */
   readonly actions: Array<() => boolean> = [];
   readonly hints: Array<() => string | null> = [];
+  /** asked every step of the game, with the seconds it covers */
+  readonly ticks: Array<(dt: number) => void> = [];
+  /** while true the game stands still (an add-on has a menu open); the picture is still drawn */
+  held = false;
   /** Something that makes a noise has happened; `strength` from 0 to 1 where it varies. */
   onSound: (what: Sfx, strength?: number) => void = () => undefined;
   /** The last delivery of a run is in: what it scored and how long it took (s). */
@@ -507,6 +511,50 @@ export class Game {
   }
 
   // ------------------------------------------------------------------ cars
+
+  /**
+   * For add-ons: stand a car in the world, with nobody in it. `make` gives it a colour, a top
+   * speed (m/s), a pull (m/s²) and how much of a knock becomes damage.
+   */
+  place(kind: 'sedan' | 'sport' | 'van', x: number, y: number, th: number, make: { colour?: string; top?: number; acc?: number; dent?: number } = {}): Car {
+    const c = new Car(kind, make.colour, make.top || make.acc ? { ...(make.top ? { top: make.top } : {}), ...(make.acc ? { acc: make.acc } : {}) } : undefined);
+    if (make.dent) c.dent = make.dent;
+    c.x = x;
+    c.y = y;
+    c.th = th;
+    this.cars.push(c);
+    this.scene.add(c.mesh);
+    return c;
+  }
+
+  /** For add-ons: take a car out of the world. If you sit in it, you stand where it stood. */
+  remove(c: Car): void {
+    if (this.car === c) {
+      this.me.x = c.x;
+      this.me.y = c.y;
+      this.me.vx = 0;
+      this.me.vy = 0;
+      this.car = null;
+    }
+    c.driver = 'none';
+    this.dropCar(c);
+  }
+
+  /** For add-ons: sit in a car that stands in the world. */
+  seat(c: Car): void {
+    if (this.car && this.car !== c) this.car.driver = 'none';
+    c.driver = 'player';
+    this.car = c;
+  }
+
+  /** For add-ons: a ring on the ground of the loaded square, like the ring of a package. It goes when the square goes. */
+  ring(colour: string, x: number, y: number): { remove: () => void } {
+    const group = this.world.model.group;
+    const mesh = markerMesh(colour);
+    mesh.position.set(x, this.world.groundY(x, y), -y);
+    group.add(mesh);
+    return { remove: () => void group.remove(mesh) };
+  }
 
   private addCar(kind: CarKind, x: number, y: number, th: number): Car {
     const c = new Car(kind);
@@ -1456,6 +1504,11 @@ export class Game {
 
   update(dtRaw: number, input: Input): void {
     const dt = Math.max(0, Math.min(dtRaw, 0.05));
+    if (this.held) {
+      if (this.render) this.renderer.render(this.scene, this.camera);
+      return;
+    }
+    for (const tick of this.ticks) tick(dt);
     const w = this.world;
     this.clock += dt;
     if (this.frozen > 0) this.frozen -= dt;
