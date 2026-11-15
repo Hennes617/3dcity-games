@@ -51,7 +51,9 @@ declare h text := public.code_hash(code); t timestamptz;
 begin
   if h is null then raise exception 'bad save code' using errcode = '22023'; end if;
   insert into public.saves (key_hash, name, data) values (h, btrim(save_put.name), save_put.data)
-  on conflict (key_hash) do update set name = excluded.name, data = excluded.data, updated_at = now()
+  on conflict (key_hash) do update set name = excluded.name, data = excluded.data,
+    -- an unchanged game keeps its time, so that sending it again does not look like news
+    updated_at = case when public.saves.name = excluded.name and public.saves.data = excluded.data then public.saves.updated_at else now() end
   returning updated_at into t;
   return t;
 end $$;

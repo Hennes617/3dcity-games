@@ -18,8 +18,10 @@ const KEY = 'sb_publishable__R5VVIzkFXK-ozBm18IYjg_UTw7guWe';
 const CODE = '3da-save-code';
 const NAME = '3da-save-name';
 const STAMP = '3da-save-at';
+/** Set while this browser has changes the server has not confirmed. */
+const DIRTY = '3da-save-dirty';
 /** Never sent: the save code itself, when it was last sent, and a tester's private key. */
-const PRIVATE = new Set([CODE, STAMP, '3da-full-key']);
+const PRIVATE = new Set([CODE, STAMP, DIRTY, '3da-full-key']);
 const LIMIT = 60000;
 
 const get = (k: string): string | null => {
@@ -78,7 +80,8 @@ function gather(): Record<string, string> {
   return out;
 }
 
-let last = '';
+// What was last sent, or found here at the start of the visit: an unchanged game is never sent again.
+let last = get(CODE) && !get(DIRTY) ? JSON.stringify(gather()) : '';
 
 /** Send the game as it is now. Does nothing when saving is off or nothing changed. */
 export async function push(leaving = false): Promise<boolean> {
@@ -90,9 +93,12 @@ export async function push(leaving = false): Promise<boolean> {
   if (text === last) return true;
   if (text.length > LIMIT) return false;
   try {
+    set(DIRTY, '1');
     const at = await call<string>('save_put', { code, name, data }, leaving);
+    // on a page that is going away the answer may never be read: the mark then stays for the next visit
     last = text;
     if (at) set(STAMP, at);
+    set(DIRTY, null);
     return true;
   } catch {
     return false;
@@ -103,6 +109,8 @@ let timer = 0;
 /** The game changed: send it soon. Cheap to call often. */
 export function changed(): void {
   if (!savingOn()) return;
+  if (JSON.stringify(gather()) === last) return;
+  set(DIRTY, '1');
   clearTimeout(timer);
   timer = window.setTimeout(() => void push(), 5000);
 }
@@ -118,14 +126,43 @@ export async function startSaving(name: string): Promise<boolean> {
   return push();
 }
 
-/** Fetch the saved game and put it in place of this browser's. Resolves to whether there was one. */
-async function pull(code: string): Promise<boolean> {
-  const got = await call<{ name: string; data: Record<string, string>; updated_at: string } | null>('save_get', { code });
-  if (!got) return false;
+interface Saved {
+  name: string;
+  data: Record<string, string>;
+  updated_at: string;
+}
+
+const fetchSave = (code: string, wait?: number): Promise<Saved | null> => call<Saved | null>('save_get', { code }, false, wait);
+
+/** Whether a saved game holds exactly what this browser has. */
+const sameAsHere = (got: Saved): boolean => {
+  const here = gather();
+  const there = Object.fromEntries(Object.entries(got.data ?? {}).filter(([k]) => !PRIVATE.has(k)));
+  const keys = new Set([...Object.keys(here), ...Object.keys(there)]);
+  keys.delete(NAME);
+  return [...keys].every((k) => here[k] === there[k]);
+};
+
+/** Put a saved game in place of this browser's. */
+function apply(got: Saved): void {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i)!;
+      if ((k.startsWith('3da-') || k === 'drive-it-3d') && !PRIVATE.has(k)) localStorage.removeItem(k);
+    }
+  } catch {
+    /* nothing to clear */
+  }
   for (const [k, v] of Object.entries(got.data ?? {})) if ((k.startsWith('3da-') || k === 'drive-it-3d') && !PRIVATE.has(k) && typeof v === 'string') set(k, v);
   set(NAME, got.name);
   set(STAMP, got.updated_at);
-  return true;
+  set(DIRTY, null);
+  last = JSON.stringify(gather());
+}
+
+/** Whether this browser holds a game of its own that a saved one would replace. */
+function hasGame(): boolean {
+  return get('drive-it-3d') !== null || get('3da-scores') !== null || get(CODE) !== null;
 }
 
 /** The link that carries this game to another device. It is the key to the save: for the player alone. */
@@ -145,15 +182,17 @@ export async function stopSaving(): Promise<boolean> {
   set(CODE, null);
   set(NAME, null);
   set(STAMP, null);
+  set(DIRTY, null);
   return true;
 }
 
 /**
- * At the start of a visit. A link from another device (`?save=<code>`) brings its game here; a
- * browser that saves checks whether another device has played since. Resolves to 'reload' when
- * the game in this browser was replaced and the page should start again.
+ * At the start of a visit. A link from another device (`?save=<code>`) brings its game here, after
+ * asking when this browser has a game of its own. A browser that saves first sends what the server
+ * has not confirmed, and otherwise checks whether another device has played since. Resolves to
+ * 'reload' when the game in this browser was replaced and the page should start again.
  */
-export async function arrive(): Promise<'reload' | 'ok'> {
+export async function arrive(ask: (name: string) => boolean): Promise<'reload' | 'ok'> {
   const q = new URLSearchParams(location.search);
   const given = q.get('save');
   if (given !== null) {
@@ -163,8 +202,10 @@ export async function arrive(): Promise<'reload' | 'ok'> {
     history.replaceState(null, '', location.pathname + (rest ? `?${rest}` : '') + location.hash);
     if (/^[A-Za-z0-9]{32,64}$/.test(given) && given !== get(CODE)) {
       try {
-        if (await pull(given)) {
+        const got = await fetchSave(given);
+        if (got && (!hasGame() || ask(got.name))) {
           set(CODE, given);
+          apply(got);
           return 'reload';
         }
       } catch {
@@ -175,10 +216,24 @@ export async function arrive(): Promise<'reload' | 'ok'> {
   }
   const code = get(CODE);
   if (!code || !get(NAME)) return 'ok';
+  // what was played here and never confirmed goes first, and is not overwritten
+  if (get(DIRTY)) {
+    last = '';
+    await Promise.race([push(), new Promise((r) => setTimeout(r, 2500))]);
+    return 'ok';
+  }
   try {
     // the game must not wait long for this: an invited player's run starts at once
-    const got = await call<{ updated_at: string } | null>('save_get', { code }, false, 2500);
-    if (got && got.updated_at !== get(STAMP) && Date.parse(got.updated_at) > Date.parse(get(STAMP) ?? '1970-01-01')) return (await pull(code)) ? 'reload' : 'ok';
+    const got = await fetchSave(code, 2500);
+    if (!got || got.updated_at === get(STAMP)) return 'ok';
+    if (sameAsHere(got)) {
+      set(STAMP, got.updated_at);
+      return 'ok';
+    }
+    if (Date.parse(got.updated_at) > Date.parse(get(STAMP) ?? '1970-01-01')) {
+      apply(got);
+      return 'reload';
+    }
   } catch {
     /* offline: play on with what is here */
   }

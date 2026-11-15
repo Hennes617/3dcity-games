@@ -892,7 +892,7 @@ addEventListener('pagehide', () => save());
 // saving online, for a player who enters a name; without one none of it contacts anyone
 if (!BAKED) {
   // a game saved on another device comes first: it replaces what this browser has, then the page starts again
-  if ((await cloudArrive()) === 'reload') location.reload();
+  if ((await cloudArrive((name) => confirm(`Replace the game on this device with ${name}'s saved game? The game and scoreboard here would be lost.`))) === 'reload') location.reload();
   wireCloud($('account'), linkHome(location), lastName);
 }
 
