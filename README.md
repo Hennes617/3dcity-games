@@ -65,7 +65,10 @@ the streets, buildings, water and hills come from the same map squares as
   counts challenge links made and opened, and visitors who arrive by the link under a video
   (`?ref=youtube`), each with the region of the map being played (a square of one degree, about
   100 km), and nothing else: nothing about the player, the friend or where they are
-  (`src/linkCount.ts`). The card says so under the button.
+  (`src/linkCount.ts`). Saving
+  online is optional: a player who enters a name on the start screen has their name and game kept on
+  a server, to go on with it on another device, and can delete it there again; without a name nothing
+  is sent (`src/cloud.ts`). The card says so under the button.
 - **Heat.** Knocking people over, taking someone's car and ramming traffic or the police raise it (up to
   four badges). More heat brings more police cars. Stay out of their sight and it cools off; stop next to
   one and you're caught and fined.
