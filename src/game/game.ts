@@ -32,7 +32,7 @@ import { Car, collideCars, type CarKind } from './cars';
 import type { Input } from './input';
 import { Strip, drawnOverGround } from './roadMesh';
 import { laneOffset, SPEED_LIMIT, type PathState, type Pick, type RouteField } from './roads';
-import { areaCentre, World } from './world';
+import { areaCentre, riseUnder, World } from './world';
 import type { Ears, Sfx } from '../sound';
 import { JOB_OF, type JobKind } from './services';
 
@@ -551,7 +551,7 @@ export class Game {
   ring(colour: string, x: number, y: number): { remove: () => void } {
     const group = this.world.model.group;
     const mesh = markerMesh(colour);
-    mesh.position.set(x, this.world.groundY(x, y), -y);
+    mesh.position.set(x, this.world.groundY(x, y) + riseUnder((gx, gy) => this.world.groundY(gx, gy), x, y, 5), -y);
     group.add(mesh);
     return { remove: () => void group.remove(mesh) };
   }
@@ -1495,7 +1495,8 @@ export class Game {
       const inside = Math.abs(x) < this.world.half && Math.abs(y) < this.world.half;
       m.mesh.visible = inside;
       if (!inside) continue;
-      m.mesh.position.set(x, this.world.groundY(x, y), -y);
+      // the ring lies flat: on a slope it is lifted over the highest ground under it, or the slope hides part of it
+      m.mesh.position.set(x, this.world.groundY(x, y) + riseUnder((gx, gy) => this.world.groundY(gx, gy), x, y, 5 * pulse), -y);
       m.mesh.scale.set(pulse, 1, pulse);
     }
   }

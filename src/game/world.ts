@@ -203,12 +203,14 @@ function stopSigns(stops: Stop[], groundY: (x: number, y: number) => number): Gr
   const g = new Group();
   for (const s of stops) {
     const [colour, r] = SIGN[s.kind];
+    // on a slope the ground would hide part of the disc: it clears the highest ground under it
+    const rise = riseUnder(groundY, s.x, s.y, r);
     for (const [rad, col, lift] of [[r, '#16181c', 0.5], [r * 0.72, colour, 0.56]] as Array<[number, string, number]>) {
       let mat = signMats.get(col);
       if (!mat) signMats.set(col, (mat = new MeshBasicMaterial({ color: col, side: DoubleSide })));
       const m = new Mesh(new CircleGeometry(rad, 20), mat);
       m.rotation.x = -Math.PI / 2;
-      m.position.set(s.x, groundY(s.x, s.y) + lift, -s.y);
+      m.position.set(s.x, groundY(s.x, s.y) + rise + lift, -s.y);
       g.add(m);
     }
   }
@@ -216,11 +218,11 @@ function stopSigns(stops: Stop[], groundY: (x: number, y: number) => number): Gr
 }
 
 const serviceMats = new Map<string, MeshBasicMaterial>();
-const serviceDisc = new CircleGeometry(4.6, 28);
+const serviceDisc = new CircleGeometry(4.6, 28); // SIGN_R
 const markMats = new WeakMap<HTMLCanvasElement, MeshBasicMaterial>();
 
 /** The symbol of a fuel, fire or police station, flat on the ground where the map has it. */
-function serviceSign(s: Service, groundY: (x: number, y: number) => number): Mesh {
+function serviceSign(s: Service, groundY: (x: number, y: number) => number, surface: (x: number, y: number) => number): Mesh {
   const key = s.kind + !!s.invented;
   let mat = serviceMats.get(key);
   if (!mat) {
@@ -231,8 +233,22 @@ function serviceSign(s: Service, groundY: (x: number, y: number) => number): Mes
   // its own copy of the disc, so that taking a square away can dispose of every sign alike
   const m = new Mesh(serviceDisc.clone(), mat);
   m.rotation.x = -Math.PI / 2;
-  m.position.set(s.x, groundY(s.x, s.y) + 0.6, -s.y);
+  // on a slope the ground under the disc rises past its middle and hides part of it: lift it by that much
+  m.position.set(s.x, groundY(s.x, s.y) + riseUnder(surface, s.x, s.y, SIGN_R) + 0.6, -s.y);
   return m;
+}
+
+const SIGN_R = 4.6;
+
+/** How far the ground rises above its height at (x, y) within r metres of it: what a flat disc laid there must clear. */
+export function riseUnder(surface: (x: number, y: number) => number, x: number, y: number, r: number): number {
+  const mid = surface(x, y);
+  let rise = 0;
+  for (let k = 0; k < 16; k++) {
+    const a = (k / 16) * Math.PI * 2;
+    for (const f of [0.5, 1]) rise = Math.max(rise, surface(x + r * f * Math.cos(a), y + r * f * Math.sin(a)) - mid);
+  }
+  return rise;
 }
 
 /**
@@ -308,7 +324,7 @@ export class World {
     }
     const m = new Mesh(serviceDisc.clone(), mat);
     m.rotation.x = -Math.PI / 2;
-    m.position.set(x, this.groundY(x, y) + this.solids.tallestNear(x, y, 5) + 0.8, -y);
+    m.position.set(x, this.groundY(x, y) + riseUnder((gx, gy) => this.groundY(gx, gy), x, y, SIGN_R) + this.solids.tallestNear(x, y, 5) + 0.8, -y);
     const entry = { x, y, icon };
     this.signs.add(m);
     this.marks.push(entry);
@@ -386,7 +402,7 @@ export class World {
       if (!world.services.some((o) => Math.hypot(o.x - sv.x, o.y - sv.y) < (o.kind === sv.kind ? 250 : 70))) world.services.push(sv);
     }
     // the map puts such a place on its building: the symbol lies on the roof, where it can be seen
-    for (const sv of world.services) signs.add(serviceSign(sv, (x, y) => surfaceY(model, x, y) + solids.tallestNear(x, y, 5) + 0.2));
+    for (const sv of world.services) signs.add(serviceSign(sv, (x, y) => surfaceY(model, x, y) + solids.tallestNear(x, y, 5) + 0.2, (x, y) => surfaceY(model, x, y)));
     if (!world.sights.length) world.sights.push(...townSights(tiles, world.proj, AREA_SIZE_M / 2 - 8));
     return world;
   }
