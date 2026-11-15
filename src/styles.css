@@ -263,5 +263,4 @@ body.touch #btn-sound { font-size: 22px; padding: 12px 15px; right: calc(72px + 
 #pause h2 { margin: 0 0 4px; font-size: 24px; }
 #btn-pause { pointer-events: auto; position: absolute; top: calc(12px + env(safe-area-inset-top)); right: calc(112px + env(safe-area-inset-right)); color: var(--ink); font-size: 13px; line-height: 1.4; padding: 9px 12px; cursor: pointer; letter-spacing: 1px; }
 body.touch #btn-pause { font-size: 16px; padding: 13px 15px; right: calc(132px + env(safe-area-inset-right)); }
-#challenge-tally { display: flex; gap: 8px; align-items: flex-start; margin: 8px 0 0; cursor: pointer; }
-#challenge-tally input { margin: 2px 0 0; flex: none; width: 16px; height: 16px; accent-color: var(--yellow); }
+#challenge-tally { margin: 6px 0 0; }
