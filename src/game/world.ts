@@ -15,7 +15,7 @@ import { RoadNet } from './roads';
 import { Solids, Streams, WaterMask } from './solids';
 import { sightsIn, type Sight } from '../landmarks';
 import { localColours } from './localColours';
-import { inventServices, readServices, serviceIcon, type Service } from './services';
+import { inventServices, readReserved, readServices, serviceIcon, type Service } from './services';
 
 export const AREA_SIZE_M = 1500;
 const GRID_STEP_M = 750;
@@ -290,11 +290,14 @@ export class World {
   /** the buildings that are walls here: outline in metres from the middle of the square, and height */
   buildings: Array<{ poly: Polygon; height: number }> = [];
 
+  /** schools, places of worship, hospitals and the like: where they lie, so an add-on can leave them alone */
+  reserved: Array<{ x: number; y: number }> = [];
+
   /** symbols an add-on has put on this square, for the maps */
   readonly marks: Array<{ x: number; y: number; icon: HTMLCanvasElement }> = [];
 
   /** For add-ons: a symbol flat on the roof at a spot (on the ground where there is none), and on the maps. */
-  mark(icon: HTMLCanvasElement, x: number, y: number): void {
+  mark(icon: HTMLCanvasElement, x: number, y: number): { remove: () => void } {
     let mat = markMats.get(icon);
     if (!mat) {
       const map = new CanvasTexture(icon);
@@ -304,8 +307,17 @@ export class World {
     const m = new Mesh(serviceDisc.clone(), mat);
     m.rotation.x = -Math.PI / 2;
     m.position.set(x, this.groundY(x, y) + this.solids.tallestNear(x, y, 5) + 0.8, -y);
+    const entry = { x, y, icon };
     this.signs.add(m);
-    this.marks.push({ x, y, icon });
+    this.marks.push(entry);
+    return {
+      remove: () => {
+        this.signs.remove(m);
+        m.geometry.dispose();
+        const i = this.marks.indexOf(entry);
+        if (i >= 0) this.marks.splice(i, 1);
+      },
+    };
   }
 
   /** well-known sights in this square, to be named for the player */
@@ -350,6 +362,7 @@ export class World {
     model.group.add(signs);
     const world = new World(centre, model, roads, solids, water, new Streams(data.features.lines), ribbons, stops, signs, buildings.length);
     world.buildings = walls;
+    world.reserved = readReserved(tiles, world.proj, AREA_SIZE_M / 2);
     // every real one the loaded map holds, to judge by; those in the square and the made-up ones are kept
     const real = readServices(tiles, world.proj, 1e9);
     const reach = AREA_SIZE_M / 2 - 8;
