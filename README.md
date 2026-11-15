@@ -57,7 +57,9 @@ the streets, buildings, water and hills come from the same map squares as
 - **Challenge a friend.** After a run, a button makes a link to it. Whoever opens the link starts where you
   started and plays the same three packages and drop-offs, with your name, score and time to beat, and can
   send their own run back. Traffic and police are not the same twice. The link holds everything, so
-  there is no server; it also means the score in a link is only as honest as its sender.
+  no server keeps runs; it also means the score in a link is only as honest as its sender. The game
+  counts challenge links made and opened, and nothing else: two numbers a day, with nothing about the
+  player, the friend or the run (`src/linkCount.ts`). The card says so under the button.
 - **Heat.** Knocking people over, taking someone's car and ramming traffic or the police raise it (up to
   four badges). More heat brings more police cars. Stay out of their sight and it cools off; stop next to
   one and you're caught and fined.
