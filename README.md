@@ -74,8 +74,9 @@ the streets, buildings, water and hills come from the same map squares as
   The car you left has a white ring around it.
 - **Public transport, from the map.** Trams run on the real tram tracks and buses on the bigger streets, and
   both wait at the real stops (red dots for trams, green for buses). Trains run on the railway tracks and
-  brake for nothing but another train: keep off the track. At the end of a track a train or tram waits a moment and goes back the way it came. Trains have no stations yet. You can take a bus; trams stay on their rails. A blue disc is
-  a subway entrance: walk in on foot and you come up at the station nearest to where you're headed.
+  brake for nothing but another train: keep off the track. At the end of a track a train or tram waits a moment and goes back the way it came. Trains have no stations yet. You can take a bus; trams stay on their rails. A subway
+  entrance is a stairwell going down, with a sign on a post beside it (a white letter on a blue disc:
+  U in Germany and Austria, M elsewhere; the game's own sign, no operator's symbol): walk in on foot and you come up at the station nearest to where you're headed.
 - **The ground is calmed before the town is built on it** (`src/game/ground.ts`). The height data is measured
   from above, and among tall buildings it measured roofs: the ground then bulged up between them and
   swallowed smaller houses. Around buildings every bump narrower than about 155 m is taken down to the

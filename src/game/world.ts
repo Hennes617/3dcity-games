@@ -16,6 +16,7 @@ import { Solids, Streams, WaterMask } from './solids';
 import { sightsIn, type Sight } from '../landmarks';
 import { localColours } from './localColours';
 import { calmGround } from './ground';
+import { subwayEntrance, subwayLetter } from './subwaySign';
 import { addWindows, styleWindows, windowsOn } from './windows';
 import { inventServices, readReserved, readServices, serviceIcon, type Service } from './services';
 
@@ -199,9 +200,18 @@ const SIGN = { bus: ['#3fae5a', 1.1], tram: ['#d8362e', 1.3], subway: ['#1f6fd6'
 const signMats = new Map<string, MeshBasicMaterial>();
 
 /** A coloured disc on the ground at every stop, and a bigger one at subway entrances. */
-function stopSigns(stops: Stop[], groundY: (x: number, y: number) => number): Group {
+function stopSigns(stops: Stop[], groundY: (x: number, y: number) => number, roads: RoadNet, letter: 'U' | 'M'): Group {
   const g = new Group();
   for (const s of stops) {
+    if (s.kind === 'subway') {
+      // a stairwell with its sign, lying along the street beside it
+      const near = roads.nearest(s.x, s.y, 60, 'any');
+      const [hx, hy] = near ? roads.heading({ line: near.line, s: near.s, dir: 1 }) : [1, 0];
+      const e = subwayEntrance(letter, Math.atan2(hy, hx));
+      e.position.set(s.x, groundY(s.x, s.y) + riseUnder(groundY, s.x, s.y, 4), -s.y);
+      g.add(e);
+      continue;
+    }
     const [colour, r] = SIGN[s.kind];
     // on a slope the ground would hide part of the disc: it clears the highest ground under it
     const rise = riseUnder(groundY, s.x, s.y, r);
@@ -346,7 +356,12 @@ export class World {
     // Building a square takes a few hundred milliseconds of work. Done in one go it froze the game
     // mid-drive each time the next square arrived, so it is done in steps with a frame in between.
     const data = parseTiles(tiles, centre, AREA_SIZE_M);
-    const stops = readStops(tiles, makeProjector(centre), AREA_SIZE_M / 2 - 8);
+    // subway entrances that would stand on top of each other count as one
+    const stops: Stop[] = [];
+    for (const st of readStops(tiles, makeProjector(centre), AREA_SIZE_M / 2 - 8)) {
+      if (st.kind === 'subway' && stops.some((o) => o.kind === 'subway' && Math.hypot(o.x - st.x, o.y - st.y) < 14)) continue;
+      stops.push(st);
+    }
     await breathe();
     const buildings = data.buildings.map((b) => ({ poly: b.poly, height: gameHeight(b.height), minHeight: gameHeight(b.minHeight), estimated: false, heightKnown: true }));
     // roofs out of the ground and the sea to sea level, before anything is built on it
@@ -387,7 +402,7 @@ export class World {
     const water = new WaterMask(data.features.areas, data.features.lines, data.features.sea ?? [], AREA_SIZE_M);
     // last, when nothing works the ground's surface over again
     showRelief(model.terrain.surface.geometry);
-    const signs = stopSigns(stops, (x, y) => surfaceY(model, x, y));
+    const signs = stopSigns(stops, (x, y) => surfaceY(model, x, y), roads, subwayLetter(centre.lat, centre.lon));
     model.group.add(signs);
     const world = new World(centre, model, roads, solids, water, new Streams(data.features.lines), ribbons, stops, signs, buildings.length);
     world.buildings = walls;
@@ -455,7 +470,7 @@ export class World {
 
   dispose(): void {
     disposeRoadMeshes(this.ribbons);
-    for (const m of this.signs.children as Mesh[]) m.geometry.dispose();
+    this.signs.traverse((o) => (o as Mesh).geometry?.dispose());
     this.model.dispose();
   }
 }
