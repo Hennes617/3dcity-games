@@ -1738,7 +1738,8 @@ export class Game {
     return {
       x,
       y,
-      th: this.car ? this.car.th : this.me.th,
+      // backing up, the arrowhead shows the way you are going, not the way the bonnet points
+      th: this.car ? (this.car.forward < -0.5 ? this.car.th + Math.PI : this.car.th) : this.me.th,
       pickups: this.job ? [] : this.pickups.map((m) => this.local(m)),
       drop: this.job ? this.local(this.job.to) : null,
       cops: this.heat > 0 ? this.cars.filter((c) => c.driver === 'cop' && !c.gone).map((c): Pt => [c.x, c.y]) : [],
