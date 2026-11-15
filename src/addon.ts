@@ -62,8 +62,9 @@ export function addonHost(h: AddonHost): void {
 
 (window as unknown as { loadAddon: typeof loadAddon }).loadAddon = loadAddon;
 
-// on the developer's own machine only: an add-on to try, named in the link
-if (['localhost', '127.0.0.1'].includes(location.hostname)) {
+// on the developer's own machine only: an add-on to try, named in the link. Inside an app the page
+// is at `localhost` too, under an address of the app's own (not http): there the link names nothing.
+if (['http:', 'https:'].includes(location.protocol) && ['localhost', '127.0.0.1'].includes(location.hostname)) {
   const url = new URLSearchParams(location.search).get('addon');
   if (url) void loadAddon(new URL(url, location.href).href);
 }
