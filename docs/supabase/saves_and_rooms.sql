@@ -125,3 +125,9 @@ revoke all on function public.save_put(text, text, jsonb), public.save_get(text)
   public.room_create(text, text, text), public.room_get(text), public.room_submit(text, text, text, integer, integer) from public;
 grant execute on function public.save_put(text, text, jsonb), public.save_get(text), public.save_delete(text),
   public.room_create(text, text, text), public.room_get(text), public.room_submit(text, text, text, integer, integer) to anon;
+
+-- Later changes, applied 16 November 2026 after a security review:
+-- - the rooms are switched off for browsers: execute on room_create, room_get and room_submit is revoked from anon;
+-- - no function here is granted to the signed-in role (authenticated): nothing in the game signs anyone in;
+-- - save_put refuses a NEW save once 5000 exist ('saving is full for now'); existing saves keep working;
+-- - count_link_at holds at most 3000 different squares a day; beyond that a count goes to "no square".
