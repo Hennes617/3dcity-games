@@ -215,6 +215,7 @@ function stopSigns(stops: Stop[], groundY: (x: number, y: number) => number): Gr
 
 const serviceMats = new Map<string, MeshBasicMaterial>();
 const serviceDisc = new CircleGeometry(4.6, 28);
+const markMats = new WeakMap<HTMLCanvasElement, MeshBasicMaterial>();
 
 /** The symbol of a fuel, fire or police station, flat on the ground where the map has it. */
 function serviceSign(s: Service, groundY: (x: number, y: number) => number): Mesh {
@@ -286,6 +287,27 @@ export class World {
   /** fuel, fire and police stations, marked with a symbol and not named */
   readonly services: Service[] = [];
 
+  /** the buildings that are walls here: outline in metres from the middle of the square, and height */
+  buildings: Array<{ poly: Polygon; height: number }> = [];
+
+  /** symbols an add-on has put on this square, for the maps */
+  readonly marks: Array<{ x: number; y: number; icon: HTMLCanvasElement }> = [];
+
+  /** For add-ons: a symbol flat on the roof at a spot (on the ground where there is none), and on the maps. */
+  mark(icon: HTMLCanvasElement, x: number, y: number): void {
+    let mat = markMats.get(icon);
+    if (!mat) {
+      const map = new CanvasTexture(icon);
+      map.colorSpace = SRGBColorSpace;
+      markMats.set(icon, (mat = new MeshBasicMaterial({ map, transparent: true, side: DoubleSide })));
+    }
+    const m = new Mesh(serviceDisc.clone(), mat);
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(x, this.groundY(x, y) + this.solids.tallestNear(x, y, 5) + 0.8, -y);
+    this.signs.add(m);
+    this.marks.push({ x, y, icon });
+  }
+
   /** well-known sights in this square, to be named for the player */
   readonly sights: Sight[];
 
@@ -319,13 +341,15 @@ export class World {
     const ribbons = await buildRoadMeshes(roads, (x, y) => surfaceY(model, x, y), breathe);
     model.group.add(ribbons);
     await breathe();
-    const solids = new Solids(buildings.filter((_, i) => !over.has(i)));
+    const walls = buildings.filter((_, i) => !over.has(i));
+    const solids = new Solids(walls);
     const water = new WaterMask(data.features.areas, data.features.lines, data.features.sea ?? [], AREA_SIZE_M);
     // last, when nothing works the ground's surface over again
     showRelief(model.terrain.surface.geometry);
     const signs = stopSigns(stops, (x, y) => surfaceY(model, x, y));
     model.group.add(signs);
     const world = new World(centre, model, roads, solids, water, new Streams(data.features.lines), ribbons, stops, signs, buildings.length);
+    world.buildings = walls;
     // every real one the loaded map holds, to judge by; those in the square and the made-up ones are kept
     const real = readServices(tiles, world.proj, 1e9);
     const reach = AREA_SIZE_M / 2 - 8;

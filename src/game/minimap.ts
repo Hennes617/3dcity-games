@@ -137,6 +137,13 @@ export class Minimap {
       const r = (this.whole ? 9 : 7) * dpr;
       ctx.drawImage(serviceIcon(s.kind, !!s.invented), sx - r, sy - r, r * 2, r * 2);
     }
+    // what an add-on has marked
+    for (const s of world.marks) {
+      const [sx, sy] = at(s.x, s.y);
+      if (sx < 0 || sy < 0 || sx > W || sy > W) continue;
+      const r = (this.whole ? 9 : 7) * dpr;
+      ctx.drawImage(s.icon, sx - r, sy - r, r * 2, r * 2);
+    }
     // well-known sights: a gold star, and on the big map the name beside it
     for (const s of world.sights) {
       const [sx, sy] = at(s.x, s.y);

@@ -235,7 +235,7 @@ async function go(at: LngLat, name?: string, sent: Challenge | null = null): Pro
       controls.onMap = () => showMap(true);
       game.showRoute = routeLine();
       (window as unknown as { game: Game }).game = game;
-      addonHost({ game, toast, api: 1 });
+      addonHost({ game, toast, api: 2 });
     }
     await game.start(at);
     // a run a friend sent is a run, whatever the start screen is set to

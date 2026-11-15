@@ -137,10 +137,13 @@ export class Car {
   knock = 0;
   /** carrying a heavy load: slower away, slower to stop, and held back more by a hill */
   heavy = false;
+  /** how much of a knock becomes damage: 1 for an ordinary car, less for a sturdy one */
+  dent = 1;
   gone = false;
 
-  constructor(readonly kind: CarKind, colour = PAINT[Math.floor(Math.random() * PAINT.length)]) {
-    this.spec = SPECS[kind];
+  constructor(readonly kind: CarKind, readonly colour = PAINT[Math.floor(Math.random() * PAINT.length)], tune?: { top?: number; acc?: number }) {
+    // a car of its own make: the looks of its kind, with its own top speed and pull
+    this.spec = tune ? { ...SPECS[kind], ...tune } : SPECS[kind];
     const m = buildMesh(kind, colour);
     this.mesh = m.group;
     this.lights = m.lights;
@@ -256,7 +259,7 @@ export class Car {
   hit(dv: number): void {
     this.knock = Math.max(this.knock, dv);
     // a train takes no harm from what it runs into
-    if (dv > 8 && this.kind !== 'train') this.hp = Math.max(0, this.hp - (dv - 8) * 2);
+    if (dv > 8 && this.kind !== 'train') this.hp = Math.max(0, this.hp - (dv - 8) * 2 * this.dent);
   }
 
   place(world: World): void {
