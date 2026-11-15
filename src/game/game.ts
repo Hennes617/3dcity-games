@@ -147,6 +147,9 @@ function personMesh(colour: string, you = false): Group {
   return g;
 }
 
+/** the colours of a car blowing up */
+const BLAST = ['#ff8a2a', '#ffd400', '#ff5a4d', '#2a2a2a', '#1c1c1c'];
+
 function markerMesh(colour: string): Group {
   const g = new Group();
   const flat = (geo: RingGeometry | CircleGeometry, opacity: number) => {
@@ -188,6 +191,9 @@ export class Game {
   private spawnT = 0;
   private copT = 0;
   private caughtT = 0;
+  /** seconds left of the car you sat in blowing up, and that car */
+  private blowT = 0;
+  private blown: Car | null = null;
   private routeT = 0;
   private routePts: Pt[] | null = null;
   private readonly routeLine = new Mesh<BufferGeometry, MeshBasicMaterial>(new BufferGeometry(), new MeshBasicMaterial({ color: '#ffd400', transparent: true, opacity: 0.6, side: DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6 }));
@@ -1534,6 +1540,24 @@ export class Game {
       this.toRoad(0, 0);
     }
     if (this.me.hp <= 0) this.fine('Knocked out!', 0.15);
+    // the car you sit in is wrecked: it blows up, and a moment later you start again as when caught
+    if (this.blowT > 0) {
+      this.blowT -= dt;
+      const c = this.blown;
+      if (c) for (let i = 0; i < 2; i++) this.cloud(c.x + (Math.random() - 0.5) * 5, c.y + (Math.random() - 0.5) * 5, 0.8 + Math.random() * 2.5, pickOne(BLAST));
+      if (this.blowT <= 0) {
+        this.blown = null;
+        this.fine('Wrecked!', 0.15);
+      }
+    } else if (this.car && this.car.hp <= 0 && live) {
+      this.blown = this.car;
+      this.blowT = 0.9;
+      this.frozen = 1;
+      this.car.controls.throttle = 0;
+      this.car.vx *= 0.3;
+      this.car.vy *= 0.3;
+      this.onSound('crash', 1);
+    }
 
     this.spawnT -= dt;
     if (this.spawnT <= 0) {
@@ -1746,7 +1770,7 @@ export class Game {
       const c = this.carInReach();
       if (c) hint = c.driver === 'none' ? 'get in' : c.kind === 'bus' ? 'take this bus' : 'take this car';
       else if (this.subwayHere() >= 0) hint = 'take the subway';
-    } else if (this.car.hp <= 0) hint = 'wrecked: get out';
+    } else if (this.car.hp <= 0) hint = 'wrecked';
     // an add-on's hint for what the press would do here comes before the game's own
     for (const say of this.hints) {
       const t = say();

@@ -66,7 +66,8 @@ the streets, buildings, water and hills come from the same map squares as
   drawn in, the rings, the subway entrances, and the police while they're after you. Tap it, or press `M`, for
   a big map of all the loaded streets (1.5 km across); the game waits while it is open. Press `G`, or the
   button on the big map, to also draw the way as a line on the road; the game remembers the choice.
-- Cars dent: below a third they smoke and slow down, at zero they're wrecked. The water's edge stops you;
+- Cars dent: below a third they smoke and slow down. At zero the car you sit in blows up, and you start
+  again a few streets away, on foot beside a parked car, as when the police catch you; it costs 15 % of your cash. The water's edge stops you;
   a stream or ditch lets a car through, slowly and with spray.
   The car you left has a white ring around it.
 - **Public transport, from the map.** Trams run on the real tram tracks and buses on the bigger streets, and
