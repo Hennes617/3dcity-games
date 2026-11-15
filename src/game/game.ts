@@ -191,6 +191,8 @@ export class Game {
   private spawnT = 0;
   private copT = 0;
   private caughtT = 0;
+  /** how many places for a package in a row had no road leading to them */
+  private noWay = 0;
   /** seconds left of the car you sat in blowing up, and that car */
   private blowT = 0;
   private blown: Car | null = null;
@@ -1228,6 +1230,25 @@ export class Game {
     return this.world.proj.toLocal(m.at.lon, m.at.lat);
   }
 
+  /**
+   * A package to pick up at a place on a street, or null if no road leads there from where you
+   * are: a street cut off from the rest (by the edge of the loaded square, a river, a gap in the
+   * map) would be a ring you can see and never reach. If place after place fails, you yourself
+   * stand on such a cut-off street, and a ring is laid anyway, so the game never runs dry.
+   */
+  private pickupAt(p: PathState): Marker | null {
+    const m = this.newMarker('#2bd4e0', p);
+    const [px, py] = this.pos();
+    const f = this.fieldOf(m);
+    if ((f && this.world.roads.route(f, px, py)) || this.noWay >= 40) {
+      this.noWay = 0;
+      return m;
+    }
+    this.noWay++;
+    this.scene.remove(m.mesh);
+    return null;
+  }
+
   private newMarker(colour: string, p: PathState): Marker {
     const [x, y] = this.world.roads.point(p.line, p.s);
     const mesh = markerMesh(colour);
@@ -1352,7 +1373,10 @@ export class Game {
         const p = w.roads.randomPlace('traffic', px, py, 90, 520);
         if (p) {
           const [x, y] = w.roads.point(p.line, p.s);
-          if (!this.pickups.some((m) => Math.hypot(this.local(m)[0] - x, this.local(m)[1] - y) < 150)) this.pickups.push(this.newMarker('#2bd4e0', p));
+          if (!this.pickups.some((m) => Math.hypot(this.local(m)[0] - x, this.local(m)[1] - y) < 150)) {
+            const m = this.pickupAt(p);
+            if (m) this.pickups.push(m);
+          }
         }
       }
       return;
@@ -1366,8 +1390,8 @@ export class Game {
     for (const kind of ['fuel', 'fire', 'police'] as const) {
       const job = JOB_OF[kind];
       if (this.pickups.some((m) => m.kind === job)) continue;
-      let best: PathState | null = null;
-      let bd = 1000;
+      // the nearest station of the kind that a road leads to
+      const near: Array<{ d: number; p: PathState }> = [];
       for (const s of w.services) {
         if (s.kind !== kind) continue;
         const n = w.roads.nearest(s.x, s.y, 150, 'traffic');
@@ -1375,12 +1399,13 @@ export class Game {
         const [x, y] = w.roads.point(n.line, n.s);
         const d = Math.hypot(x - px, y - py);
         // not the one a job was just taken from, and not one you are standing on
-        if (d < 40 || d >= bd || (last && Math.hypot(x - last[0], y - last[1]) < 30)) continue;
-        bd = d;
-        best = { line: n.line, s: n.s, dir: 1 };
+        if (d < 40 || d >= 1000 || (last && Math.hypot(x - last[0], y - last[1]) < 30)) continue;
+        near.push({ d, p: { line: n.line, s: n.s, dir: 1 } });
       }
-      if (best) {
-        const m = this.newMarker('#2bd4e0', best);
+      near.sort((a, b) => a.d - b.d);
+      let m: Marker | null = null;
+      for (const c of near.slice(0, 4)) if ((m = this.pickupAt(c.p))) break;
+      if (m) {
         m.kind = job;
         this.pickups.push(m);
       }
@@ -1388,7 +1413,8 @@ export class Game {
     // no station in reach at all: a package from a street corner, as it always was
     if (!this.pickups.length) {
       const p = w.roads.randomPlace('traffic', px, py, 90, 520);
-      if (p) this.pickups.push(this.newMarker('#2bd4e0', p));
+      const m = p && this.pickupAt(p);
+      if (m) this.pickups.push(m);
     }
   }
 
