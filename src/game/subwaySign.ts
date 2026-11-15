@@ -8,7 +8,7 @@
  * operator's own symbol is drawn.
  */
 
-import { BoxGeometry, CanvasTexture, CircleGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, SRGBColorSpace } from 'three';
+import { BoxGeometry, CanvasTexture, CircleGeometry, DoubleSide, Group, InstancedMesh, Matrix4, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, Quaternion, SRGBColorSpace, Vector3 } from 'three';
 
 /** the stairwell on the ground: width and length (m) */
 const WELL_W = 3.4;
@@ -77,51 +77,67 @@ function stairsTexture(): CanvasTexture {
 
 const wallMat = new MeshStandardMaterial({ color: '#8d9198', roughness: 0.8 });
 const postMat = new MeshStandardMaterial({ color: '#3a3e45', roughness: 0.7 });
-const box = new BoxGeometry(1, 1, 1);
 const signMats = new Map<string, MeshBasicMaterial>();
 let wellMat: MeshBasicMaterial | null = null;
 
+export interface EntranceSpot {
+  x: number;
+  y: number;
+  /** the ground to stand on (scene height) */
+  ground: number;
+  /** the direction of the street beside it (radians, east = 0, north = π/2): the stairs run along it */
+  heading: number;
+}
+
+const UP = new Vector3(0, 1, 0);
+const FLAT = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2);
+
 /**
- * One entrance. `heading` is the direction of the street beside it (radians, east = 0, north = π/2):
- * the stairs run along it. The group stands at the ground; put it where the entrance is.
+ * All the entrances of a square, drawn as a few shapes repeated: one draw for all the stairwells,
+ * one for all the walls, one for the posts and one for the signs, however many entrances there are.
  */
-export function subwayEntrance(letter: 'U' | 'M', heading: number): Group {
+export function subwayEntrances(spots: EntranceSpot[], letter: 'U' | 'M'): Group {
   const g = new Group();
+  const n = spots.length;
+  if (!n) return g;
   wellMat ??= new MeshBasicMaterial({ map: stairsTexture() });
-  const well = new Mesh(new PlaneGeometry(WELL_W, WELL_L), wellMat);
-  well.rotation.x = -Math.PI / 2;
-  well.position.y = 0.12;
-  g.add(well);
-  const wall = (sx: number, sz: number, x: number, z: number) => {
-    const m = new Mesh(box, wallMat);
-    m.scale.set(sx, WALL_H, sz);
-    m.position.set(x, WALL_H / 2, z);
-    m.castShadow = true;
-    g.add(m);
-  };
-  // the two long sides and the deep end; the top of the stairs stays open
-  wall(0.3, WELL_L, -WELL_W / 2 - 0.15, 0);
-  wall(0.3, WELL_L, WELL_W / 2 + 0.15, 0);
-  wall(WELL_W + 0.6, 0.3, 0, WELL_L / 2 + 0.15);
-  // the sign: a post beside the open end, and the disc lying flat on top, to be read from above
-  const post = new Mesh(box, postMat);
-  post.scale.set(0.22, SIGN_UP, 0.22);
-  post.position.set(WELL_W / 2 + 1.2, SIGN_UP / 2, -WELL_L / 2 - 0.6);
-  post.castShadow = true;
-  g.add(post);
-  let mat = signMats.get(letter);
-  if (!mat) {
+  let signMat = signMats.get(letter);
+  if (!signMat) {
     const map = new CanvasTexture(subwayIcon(letter));
     map.colorSpace = SRGBColorSpace;
-    signMats.set(letter, (mat = new MeshBasicMaterial({ map, transparent: true, side: DoubleSide })));
+    signMats.set(letter, (signMat = new MeshBasicMaterial({ map, transparent: true, side: DoubleSide })));
   }
-  const disc = new Mesh(new CircleGeometry(SIGN_R, 28), mat);
-  disc.rotation.x = -Math.PI / 2;
-  disc.position.set(post.position.x, SIGN_UP + 0.05, post.position.z);
-  g.add(disc);
-  // the plane's long side lies along scene z; a heading of 0 (east) is scene x
-  g.rotation.y = heading - Math.PI / 2;
-  // the letter stays upright on the screen however the stairs lie
-  disc.rotation.z = -g.rotation.y;
+  const make = (geo: PlaneGeometry | BoxGeometry | CircleGeometry, mat: MeshBasicMaterial | MeshStandardMaterial, count: number, shadow: boolean) => {
+    const mesh = new InstancedMesh(geo, mat, count);
+    mesh.castShadow = shadow;
+    // the entrances lie all over the square: never left out as "out of view" by the first one's place
+    mesh.frustumCulled = false;
+    g.add(mesh);
+    return mesh;
+  };
+  const wells = make(new PlaneGeometry(1, 1), wellMat, n, false);
+  const walls = make(new BoxGeometry(1, 1, 1), wallMat, n * 3, true);
+  const posts = make(new BoxGeometry(1, 1, 1), postMat, n, true);
+  const discs = make(new CircleGeometry(1, 28), signMat, n, false);
+  const m = new Matrix4();
+  const q = new Quaternion();
+  const turn = new Quaternion();
+  const p = new Vector3();
+  const size = new Vector3();
+  spots.forEach((s, i) => {
+    // the stairwell's long side lies along scene z; a heading of 0 (east) is scene x
+    const rot = s.heading - Math.PI / 2;
+    turn.setFromAxisAngle(UP, rot);
+    /** A spot of the entrance in the scene: `across` and `along` are metres in the stairwell's own frame. */
+    const at = (across: number, up: number, along: number) => p.set(across, 0, along).applyQuaternion(turn).add(new Vector3(s.x, s.ground + up, -s.y));
+    wells.setMatrixAt(i, m.compose(at(0, 0.12, 0), q.copy(turn).multiply(FLAT), size.set(WELL_W, WELL_L, 1)));
+    // the two long sides and the deep end; the top of the stairs stays open
+    walls.setMatrixAt(i * 3, m.compose(at(-WELL_W / 2 - 0.15, WALL_H / 2, 0), turn, size.set(0.3, WALL_H, WELL_L)));
+    walls.setMatrixAt(i * 3 + 1, m.compose(at(WELL_W / 2 + 0.15, WALL_H / 2, 0), turn, size.set(0.3, WALL_H, WELL_L)));
+    walls.setMatrixAt(i * 3 + 2, m.compose(at(0, WALL_H / 2, WELL_L / 2 + 0.15), turn, size.set(WELL_W + 0.6, WALL_H, 0.3)));
+    // the sign: a post beside the open end, and the disc lying flat on top, its letter upright on the screen
+    posts.setMatrixAt(i, m.compose(at(WELL_W / 2 + 1.2, SIGN_UP / 2, -WELL_L / 2 - 0.6), turn, size.set(0.22, SIGN_UP, 0.22)));
+    discs.setMatrixAt(i, m.compose(at(WELL_W / 2 + 1.2, SIGN_UP + 0.05, -WELL_L / 2 - 0.6), FLAT, size.set(SIGN_R, SIGN_R, 1)));
+  });
   return g;
 }

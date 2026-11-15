@@ -17,7 +17,7 @@ import { sightsIn, type Sight } from '../landmarks';
 import { localColours } from './localColours';
 import { calmGround } from './ground';
 import { readStreetNames, type StreetLabel } from './streetNames';
-import { subwayEntrance, subwayLetter } from './subwaySign';
+import { subwayEntrances, subwayLetter, type EntranceSpot } from './subwaySign';
 import { stopShapes, type StopSign, type StopSpot } from './stopShapes';
 import { addWindows, styleWindows, windowsOn } from './windows';
 import { inventServices, readReserved, readServices, serviceIcon, type Service } from './services';
@@ -203,14 +203,13 @@ function townSights(tiles: LoadedTile[], proj: Projector, half: number): Sight[]
 function stopSigns(stops: Stop[], groundY: (x: number, y: number) => number, roads: RoadNet, letter: 'U' | 'M', sign: StopSign): Group {
   const g = new Group();
   const spots: StopSpot[] = [];
+  const entrances: EntranceSpot[] = [];
   for (const s of stops) {
     if (s.kind === 'subway') {
       // a stairwell with its sign, lying along the street beside it
       const near = roads.nearest(s.x, s.y, 60, 'any');
       const [hx, hy] = near ? roads.heading({ line: near.line, s: near.s, dir: 1 }) : [1, 0];
-      const e = subwayEntrance(letter, Math.atan2(hy, hx));
-      e.position.set(s.x, groundY(s.x, s.y) + riseUnder(groundY, s.x, s.y, 4), -s.y);
-      g.add(e);
+      entrances.push({ x: s.x, y: s.y, ground: groundY(s.x, s.y) + riseUnder(groundY, s.x, s.y, 4), heading: Math.atan2(hy, hx) });
       continue;
     }
     // a bus stop or a tram stop: beside its street or track, on the side it lies on
@@ -227,6 +226,7 @@ function stopSigns(stops: Stop[], groundY: (x: number, y: number) => number, roa
     spots.push({ kind: s.kind, x: s.x, y: s.y, ground: groundY(s.x, s.y) + riseUnder(groundY, s.x, s.y, 3), heading, side });
   }
   g.add(stopShapes(spots, sign));
+  g.add(subwayEntrances(entrances, letter));
   return g;
 }
 
