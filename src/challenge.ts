@@ -16,6 +16,18 @@ export interface Challenge {
 
 const E5 = 1e5;
 
+/** Where the game lives on the web. */
+export const WEB_HOME = 'https://yourplace3d.github.io/3dcity-games/';
+
+/**
+ * The address a challenge link starts with. On the web that is the page itself, wherever it is
+ * hosted. Inside the app the page has an address of its own (`capacitor://localhost/`) that no
+ * friend can open and that a phone won't offer to share, so there the link points at the web game.
+ */
+export function linkHome(at: { protocol: string; origin: string; pathname: string }): string {
+  return at.protocol === 'http:' || at.protocol === 'https:' ? `${at.origin}${at.pathname}` : WEB_HOME;
+}
+
 /** The text that stands for a challenge in a link: letters, digits, `-` and `_` only. */
 export function packChallenge(c: Challenge): string {
   const { start, legs } = c.course;

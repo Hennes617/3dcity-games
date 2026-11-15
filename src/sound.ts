@@ -36,6 +36,8 @@ export class Sound {
   private hornAt = -99;
   private crashAt = -99;
   on = true;
+  /** The page has been out of sight since the sound was last woken: see `wake`. */
+  private away = false;
 
   /** Whether the browser is letting the page be heard right now (for the button, and for tests). */
   get heard(): boolean {
@@ -54,8 +56,10 @@ export class Sound {
     for (const ev of ['pointerup', 'touchend', 'click', 'keydown', 'pointerdown']) addEventListener(ev, wake, true);
     document.addEventListener('visibilitychange', () => {
       if (!this.ctx) return;
-      if (document.hidden) void this.ctx.suspend();
-      else if (this.on) void this.ctx.resume();
+      if (document.hidden) {
+        this.away = true;
+        void this.ctx.suspend();
+      } else if (this.on) void this.ctx.resume();
     });
   }
 
@@ -76,6 +80,13 @@ export class Sound {
   private wake(): void {
     if (!this.on) return;
     try {
+      // An iPhone back from the Home Screen says its sound is running and plays nothing. The first
+      // touch after a time out of sight starts the sound afresh instead of trusting what is there.
+      if (this.away && this.ctx) {
+        void this.ctx.close();
+        this.ctx = this.out = this.engine = this.skid = this.siren = this.noise = null;
+      }
+      this.away = false;
       if (!this.ctx) this.build();
       // an iPhone or iPad with its ringer switched to silent mutes a web page's sounds unless the page
       // says they are what it is for, as a game's are
