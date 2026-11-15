@@ -216,26 +216,32 @@ export async function arrive(ask: (name: string) => boolean): Promise<'reload' |
   }
   const code = get(CODE);
   if (!code || !get(NAME)) return 'ok';
-  // what was played here and never confirmed goes first, and is not overwritten
-  if (get(DIRTY)) {
-    last = '';
-    await Promise.race([push(), new Promise((r) => setTimeout(r, 2500))]);
-    return 'ok';
-  }
+  const dirty = !!get(DIRTY);
   try {
     // the game must not wait long for this: an invited player's run starts at once
     const got = await fetchSave(code, 2500);
-    if (!got || got.updated_at === get(STAMP)) return 'ok';
-    if (sameAsHere(got)) {
-      set(STAMP, got.updated_at);
-      return 'ok';
+    if (got && got.updated_at !== get(STAMP)) {
+      if (sameAsHere(got)) {
+        // the copy sent while leaving did arrive: only its time was never read
+        set(STAMP, got.updated_at);
+        set(DIRTY, null);
+        last = JSON.stringify(gather());
+        return 'ok';
+      }
+      if (Date.parse(got.updated_at) > Date.parse(get(STAMP) ?? '1970-01-01')) {
+        // another device has played since: its game is the newer one and is taken, also over
+        // changes here that were sent while leaving and that it was built on
+        apply(got);
+        return 'reload';
+      }
     }
-    if (Date.parse(got.updated_at) > Date.parse(get(STAMP) ?? '1970-01-01')) {
-      apply(got);
-      return 'reload';
+    // nobody else has written: what was played here and not yet confirmed is sent now
+    if (dirty) {
+      last = '';
+      void push();
     }
   } catch {
-    /* offline: play on with what is here */
+    /* offline: play on with what is here; the mark stays and the game is sent later */
   }
   return 'ok';
 }
