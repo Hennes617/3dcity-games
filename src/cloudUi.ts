@@ -169,11 +169,11 @@ export function wireRoom(els: { box: HTMLElement; button: HTMLButtonElement; not
         void enter(room);
       } else if (room) {
         els.button.textContent = 'Join the room’s board';
-        els.note.textContent = 'You played a room’s run. Enter your name above to put your result on its board. That also keeps your game online under that name; you can delete it on the start screen.';
+        els.note.textContent = 'You played a room’s run. If you like, enter your name above to put your result on its board; that also keeps your game online under that name, and you can delete it on the start screen. Or just carry on below: then nothing about you is stored.';
         void roomGet(room).then(draw, () => undefined);
       } else {
         els.button.textContent = `Make a room for up to ${ROOM_SIZE} players`;
-        els.note.textContent = 'One link for a group: everyone plays these deliveries and sees the others’ results. It keeps your game online under your name; you can delete it on the start screen.';
+        els.note.textContent = 'If you like: one link for a group, everyone plays these deliveries and sees the others’ results. It keeps your game online under your name; you can delete it on the start screen.';
       }
     },
   };
