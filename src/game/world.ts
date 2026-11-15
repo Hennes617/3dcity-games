@@ -13,6 +13,8 @@ import { PALETTE } from '../scene/overlay';
 import { buildRoadMeshes, disposeRoadMeshes, showRelief } from './roadMesh';
 import { RoadNet } from './roads';
 import { Solids, Streams, WaterMask } from './solids';
+import { basinMesh, takeBasins } from './basins';
+import type { AreaFeature } from '../geo/osm';
 import { sightsIn, type Sight } from '../landmarks';
 import { localColours } from './localColours';
 import { calmGround } from './ground';
@@ -392,6 +394,8 @@ export class World {
     }
     model.setBuildingSpecs(buildings);
     await breathe();
+    // small water becomes basins with a rim, taken out of what is painted on the ground
+    const basins = takeBasins(data.features.areas, AREA_SIZE_M / 2);
     model.setFeatures(data.features);
     const colours = localColours(data.colours, makeProjector(centre));
     model.setBuildingTint((e, n) => colours.at(e, n));
@@ -405,11 +409,15 @@ export class World {
     await breathe();
     const walls = buildings.filter((_, i) => !over.has(i));
     const solids = new Solids(walls);
-    const water = new WaterMask(data.features.areas, data.features.lines, data.features.sea ?? [], AREA_SIZE_M);
+    // a basin stops a car as water does
+    const wet: AreaFeature[] = [...data.features.areas, { kind: 'water', polys: basins.map((b) => b.poly) }];
+    const water = new WaterMask(wet, data.features.lines, data.features.sea ?? [], AREA_SIZE_M);
     // last, when nothing works the ground's surface over again
     showRelief(model.terrain.surface.geometry);
     const signs = stopSigns(stops, (x, y) => surfaceY(model, x, y), roads, subwayLetter(centre.lat, centre.lon), 'picture');
     model.group.add(signs);
+    const basinShape = basinMesh(basins, (x, y) => surfaceY(model, x, y));
+    if (basinShape) signs.add(basinShape);
     const world = new World(centre, model, roads, solids, water, new Streams(data.features.lines), ribbons, stops, signs, buildings.length);
     world.buildings = walls;
     world.streetNames = readStreetNames(tiles, world.proj, AREA_SIZE_M / 2);

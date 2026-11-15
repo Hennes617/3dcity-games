@@ -52,6 +52,10 @@ the streets, buildings, water and hills come from the same map squares as
   list is kept by hand in `src/landmarks.ts`. Where a square has none of those, public places from the map
   are named instead, one of each kind and six at most: town hall, railway station, museum, theatre, library,
   stadium, bus station, ferry terminal, cinema, marketplace, swimming pool, sports centre.
+- **Small water is a basin.** The map calls every small piece of water a pond and has no word for a
+  fountain, so the game goes by size and shape: water up to 25 m across and compact is drawn as a basin
+  with a stone rim, and a round one gets a jet in the middle. Larger or straggling water stays a pond,
+  painted on the ground. A swimming pool gets the rim and a paler blue (`src/game/basins.ts`).
 - **Fuel, fire and police stations carry a symbol and no name**, on their roof and on both maps. Shops, restaurants, hotels, schools, hospitals, places of worship, courts and post offices
   are neither named nor marked.
 - **Challenge a friend.** After a run, a button makes a link to it. Whoever opens the link starts where you

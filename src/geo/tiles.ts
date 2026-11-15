@@ -294,7 +294,10 @@ export function parseTiles(tiles: LoadedTile[], center: LngLat, sizeM: number): 
       const toLocal = tileProjector(t, extentOf('water'), proj);
       eachFeature(layers.water, (f) => {
         if (f.type !== 3 || str(f.properties.brunnel) === 'tunnel') return;
+        const before = areas.length;
         const clipped = clipArea('water', polygonsOf(f, toLocal));
+        // what kind of water the map calls it (pond, lake, river, swimming_pool, ocean)
+        if (areas.length > before) areas[before].cls = str(f.properties.class);
         if (str(f.properties.class) === 'ocean') sea.push(...clipped);
       });
     }
