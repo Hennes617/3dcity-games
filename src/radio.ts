@@ -8,6 +8,8 @@
  * heard comes straight from each station's own public stream, unchanged; the game keeps and
  * passes on nothing. Pressing the button therefore contacts the directory and then the station.
  *
+ * It is a car radio: it is heard while you sit in a car and falls silent when you get out.
+ *
  * Only streams at a secure address can play on this page, and a station that does not start
  * within a few seconds is skipped.
  */
@@ -77,9 +79,16 @@ async function stationsNear(lat: number, lon: number): Promise<Station[]> {
 
 /**
  * Put the radio's button and its bar to work. `place` gives where the player is on the earth
- * (null before a town is loaded); `say` shows a short message.
+ * (null before a town is loaded); `inCar` says whether the player sits in a car right now: the
+ * radio is a car radio and is heard nowhere else; `say` shows a short message.
  */
-export function wireRadio(button: HTMLButtonElement, bar: HTMLElement, place: () => { lat: number; lon: number } | null, say: (text: string, kind?: 'good' | 'bad' | 'info') => void): void {
+export function wireRadio(
+  button: HTMLButtonElement,
+  bar: HTMLElement,
+  place: () => { lat: number; lon: number } | null,
+  inCar: () => boolean,
+  say: (text: string, kind?: 'good' | 'bad' | 'info') => void,
+): void {
   if (!radioOn()) return;
   button.hidden = false;
   const audio = new Audio();
@@ -90,6 +99,8 @@ export function wireRadio(button: HTMLButtonElement, bar: HTMLElement, place: ()
   let askedFor: { lat: number; lon: number } | null = null;
   let giveUp = 0;
   let failed = 0;
+  /** on, but silent because you are not in a car */
+  let waiting = false;
   const nameEl = bar.querySelector<HTMLElement>('.name')!;
   const nextEl = bar.querySelector<HTMLButtonElement>('.next')!;
 
@@ -102,6 +113,7 @@ export function wireRadio(button: HTMLButtonElement, bar: HTMLElement, place: ()
 
   function off(): void {
     on = false;
+    waiting = false;
     clearTimeout(giveUp);
     audio.pause();
     audio.removeAttribute('src');
@@ -146,6 +158,13 @@ export function wireRadio(button: HTMLButtonElement, bar: HTMLElement, place: ()
     const p = place();
     if (!p) return;
     on = true;
+    if (!inCar()) {
+      // switched on, and heard as soon as you sit in a car
+      waiting = true;
+      show('The radio plays in a car');
+      return;
+    }
+    waiting = false;
     // a new town, new stations: asked again when you have come 30 km
     const far = !askedFor || Math.hypot(askedFor.lat - p.lat, (askedFor.lon - p.lon) * Math.cos((p.lat * Math.PI) / 180)) * 111 > 30;
     if (far) {
@@ -173,15 +192,29 @@ export function wireRadio(button: HTMLButtonElement, bar: HTMLElement, place: ()
     else void turnOn();
   });
   nextEl.addEventListener('click', () => {
-    if (!on || !stations.length) return;
+    if (!on || waiting || !stations.length) return;
     failed = 0;
     at++;
     play();
   });
+  // a car radio: it stops when you get out, and comes back when you get into a car again, with
+  // the stations of the town you are in by then
+  setInterval(() => {
+    if (!on) return;
+    const sitting = inCar();
+    if (!sitting && !waiting) {
+      waiting = true;
+      clearTimeout(giveUp);
+      audio.pause();
+      show('The radio plays in a car');
+    } else if (sitting && waiting) {
+      void turnOn();
+    }
+  }, 400);
   // silent while the game is out of sight
   document.addEventListener('visibilitychange', () => {
     if (!on) return;
     if (document.hidden) audio.pause();
-    else void audio.play().catch(() => undefined);
+    else if (!waiting) void audio.play().catch(() => undefined);
   });
 }

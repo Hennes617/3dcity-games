@@ -899,4 +899,4 @@ else if (linked) {
 }
 
 // a trial (`?try=radio`): a car radio with stations of the town
-wireRadio($<HTMLButtonElement>('btn-radio'), $('radio-bar'), () => (game?.world ? game.world.centre : null), toast);
+wireRadio($<HTMLButtonElement>('btn-radio'), $('radio-bar'), () => (game?.world ? game.world.centre : null), () => playing && !!game?.car, toast);
