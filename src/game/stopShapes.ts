@@ -2,9 +2,10 @@
  * Bus and tram stops as things you can recognise from above: a bus stop is a small shelter with a
  * sign on a post, a tram stop a platform beside the track with the same kind of sign.
  *
- * The sign follows the custom of the country, as far as that custom is a public road sign and not
- * an operator's own symbol: in Germany, Austria and Switzerland a green H on a yellow disc with a
- * green rim; elsewhere a white bus or tram on a blue disc. The shapes are the game's own drawings.
+ * For now the sign is the same everywhere: a white bus on a blue disc, a white tram on a red one,
+ * the game's own drawings. A sign by country is prepared (`stopSign`, the green H on yellow of
+ * Germany, Austria and Switzerland) and not switched on: only a country's public road sign for a
+ * stop would be used, never an operator's own symbol.
  *
  * All the stops of a square are drawn as a handful of shapes repeated (one draw for all the
  * roofs, one for all the posts, and so on), so a town with two hundred stops costs no more to

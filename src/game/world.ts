@@ -18,7 +18,7 @@ import { localColours } from './localColours';
 import { calmGround } from './ground';
 import { readStreetNames, type StreetLabel } from './streetNames';
 import { subwayEntrance, subwayLetter } from './subwaySign';
-import { stopShapes, stopSign, type StopSign, type StopSpot } from './stopShapes';
+import { stopShapes, type StopSign, type StopSpot } from './stopShapes';
 import { addWindows, styleWindows, windowsOn } from './windows';
 import { inventServices, readReserved, readServices, serviceIcon, type Service } from './services';
 
@@ -408,7 +408,7 @@ export class World {
     const water = new WaterMask(data.features.areas, data.features.lines, data.features.sea ?? [], AREA_SIZE_M);
     // last, when nothing works the ground's surface over again
     showRelief(model.terrain.surface.geometry);
-    const signs = stopSigns(stops, (x, y) => surfaceY(model, x, y), roads, subwayLetter(centre.lat, centre.lon), stopSign(centre.lat, centre.lon));
+    const signs = stopSigns(stops, (x, y) => surfaceY(model, x, y), roads, subwayLetter(centre.lat, centre.lon), 'picture');
     model.group.add(signs);
     const world = new World(centre, model, roads, solids, water, new Streams(data.features.lines), ribbons, stops, signs, buildings.length);
     world.buildings = walls;
