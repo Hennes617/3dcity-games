@@ -79,3 +79,50 @@ export function newRound(not: string[] = [], rnd: () => number = Math.random): R
   };
   return { city: city.name, at, options: shuffle([city.name, near[0].name, near[1].name, far.name], rnd) };
 }
+
+/** A city someone guessed, sent on for the next one to guess: the same spot, the same four names, and what there is to beat. */
+export interface SentGuess {
+  name: string;
+  points: number;
+  seconds: number;
+  wrong: number;
+  round: Round;
+}
+
+const KEY = [0x3d, 0xa7, 0x51, 0xc4, 0x1e, 0x92, 0x6b];
+
+/**
+ * The text that stands for a sent guess in a link. The link must not say which city it is, so the
+ * bytes are stirred before they are written: nobody reads "Toronto" out of the address by eye.
+ * It is no secret from someone who sets out to take the link apart.
+ */
+export function packGuess(g: SentGuess): string {
+  const json = JSON.stringify([1, g.name.slice(0, 16), Math.round(g.points), Math.round(g.seconds), g.wrong, Math.round(g.round.at.lat * 1e5), Math.round(g.round.at.lon * 1e5), g.round.options.indexOf(g.round.city), ...g.round.options]);
+  let bin = '';
+  new TextEncoder().encode(json).forEach((b, i) => (bin += String.fromCharCode(b ^ KEY[i % KEY.length] ^ (i & 0xff))));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** A sent guess from a link, or null when the text is not one. */
+export function readGuess(text: string): SentGuess | null {
+  try {
+    const bin = atob(text.replace(/-/g, '+').replace(/_/g, '/'));
+    const a = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (ch, i) => ch.charCodeAt(0) ^ KEY[i % KEY.length] ^ (i & 0xff)))) as unknown;
+    if (!Array.isArray(a) || a[0] !== 1 || a.length !== 12) return null;
+    const [, name, pts, seconds, wrong, lat, lon, right, ...options] = a as unknown[];
+    const nums = [pts, seconds, wrong, lat, lon, right];
+    if (typeof name !== 'string' || !nums.every((n) => typeof n === 'number' && Number.isFinite(n))) return null;
+    if (!options.every((o): o is string => typeof o === 'string' && o.length > 0 && o.length <= 40) || new Set(options).size !== 4) return null;
+    const [p, s, w, la, lo, r] = nums as number[];
+    if (Math.abs(la) > 85e5 || Math.abs(lo) > 180e5 || !Number.isInteger(r) || r < 0 || r > 3) return null;
+    return {
+      name: name.trim().slice(0, 16),
+      points: Math.max(0, Math.min(FULL, Math.round(p))),
+      seconds: Math.max(0, Math.min(86400, Math.round(s))),
+      wrong: Math.max(0, Math.min(3, Math.round(w))),
+      round: { city: options[r], at: { lat: la / 1e5, lon: lo / 1e5 }, options },
+    };
+  } catch {
+    return null;
+  }
+}

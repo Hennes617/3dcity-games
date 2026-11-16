@@ -19,7 +19,7 @@ import { Controls } from './game/input';
 import { Minimap } from './game/minimap';
 import { areaKey, squaresAround, World } from './game/world';
 import { findPlace, nearCity, placeAt } from './places';
-import { newRound, played, points, type Round } from './guess';
+import { newRound, packGuess, played, points, readGuess, type Round, type SentGuess } from './guess';
 import { addScore, lastName, nameScore, scores, type Score } from './scores';
 import { BAKED } from './geo/mapCache';
 import type { LngLat } from './geo/projection';
@@ -311,19 +311,21 @@ function arrive(): void {
   arrived = true;
   $('arrive-place').textContent = secret ? 'Where am I?' : placeName;
   $('arrive-line').textContent = secret
-    ? 'Drive around and look. Tap “Guess the city” when you know: the sooner, the more points.'
+    ? guessRival
+      ? `${guessRival.name || 'Someone'} ${guessRival.points ? `knew this city after ${secs(guessRival.seconds)}: ${guessRival.points} points` : 'did not get this city'}. Same place, same four names: beat it.`
+      : 'Drive around and look. Tap “Guess the city” when you know: the sooner, the more points.'
     : rival
     ? `${rival.name || 'Someone'} made ${fmtMoney(rival.score)} here in ${fmtTime(rival.seconds)}. Same ${deliveries(rival.course.legs.length)}: beat it.`
     : game?.run.over
       ? 'Open jobs: look for the pump, the flame and the badge'
       : `${cap(deliveries(RUN_JOBS))} make a run`;
   const el = $('arrive');
-  el.classList.toggle('sent', !!rival);
+  el.classList.toggle('sent', !!rival || (!!secret && !!guessRival));
   el.hidden = true;
   void el.offsetWidth;
   el.hidden = false;
   clearTimeout(arriveT);
-  arriveT = window.setTimeout(() => (el.hidden = true), rival ? 6000 : 3200);
+  arriveT = window.setTimeout(() => (el.hidden = true), rival || (secret && guessRival) ? 6000 : 3200);
 }
 let arriveT = 0;
 
@@ -331,6 +333,7 @@ let arriveT = 0;
 function withoutChallenge(): string {
   const q = new URLSearchParams(location.search);
   q.delete('c');
+  q.delete('g');
   const text = q.toString().replace(/=(?=&|$)/g, '');
   return location.pathname + (text ? `?${text}` : '');
 }
@@ -471,7 +474,12 @@ function begin(): void {
   setScreen('play');
   if (placeKnown) arrive();
   if (rival && coached()) return;
-  if (mode === 'battle' || battle || secret) return;
+  if (mode === 'battle' || battle) return;
+  if (secret) {
+    // someone who came by a friend's link may never have played: say how to get going, once the sign has been read
+    setTimeout(() => playing && secret && !game?.car && toast(document.body.classList.contains('touch') ? 'Walk to a car and tap In / out' : 'Walk to a car and press E', 'info'), guessRival ? 6200 : 3400);
+    return;
+  }
   // open jobs from the start: say where they are, once the place's name has been read
   if (game?.run.over && coached()) {
     setTimeout(() => playing && game?.run.over && openJobs(true), 3600);
@@ -492,6 +500,11 @@ let guessing = false;
 /** how long the player has looked around (s), and the wrong names picked */
 let lookedS = 0;
 let wrongPicks = 0;
+/** the guess someone sent that is being played: theirs is the one to beat */
+let guessRival: SentGuess | null = null;
+/** the city just guessed, to send on */
+let justGuessed: SentGuess | null = null;
+const secs = (s: number): string => (s < 60 ? `${Math.round(s)} seconds` : fmtTime(s));
 /** this visit: cities guessed and the points they made */
 const tally = { cities: 0, points: 0 };
 
@@ -505,11 +518,13 @@ function endGuess(): void {
 }
 
 /** Put the player down in a city they are not told; one that doesn't load or has little on the map is passed over. */
-async function drop(): Promise<void> {
+async function drop(sent: SentGuess | null = null): Promise<void> {
   if (busy) return;
   const failed: string[] = [];
-  for (let tries = 0; tries < 4; tries++) {
-    const round = newRound(failed);
+  guessRival = sent;
+  if (sent) setMode('guess');
+  for (let tries = 0; tries < (sent ? 1 : 4); tries++) {
+    const round = sent?.round ?? newRound(failed);
     dropping = true;
     secret = round;
     lookedS = 0;
@@ -519,7 +534,7 @@ async function drop(): Promise<void> {
     } finally {
       dropping = false;
     }
-    if (playing && game?.world && !game.world.thin) {
+    if (playing && game?.world && (sent || !game.world.thin)) {
       played(round.city);
       minimap.secret = bigmap.secret = true;
       document.body.classList.add('secret');
@@ -531,8 +546,9 @@ async function drop(): Promise<void> {
     setScreen('start');
   }
   endGuess();
+  guessRival = null;
   status.className = 'status error';
-  status.textContent = navigator.onLine === false ? 'You seem to be offline.' : 'No city would load just now. Try again in a moment.';
+  status.textContent = navigator.onLine === false ? 'You seem to be offline.' : sent ? 'The city in this link didn’t load. Open the link again in a moment.' : 'No city would load just now. Try again in a moment.';
 }
 
 function tallyLine(): string {
@@ -546,7 +562,7 @@ function askGuess(): void {
   controls.enabled = false;
   $('guess-title').textContent = 'Which city is this?';
   $('guess-score').textContent = `${points(lookedS, wrongPicks)} points`;
-  $('guess-line').textContent = 'A wrong pick costs 250 points and takes that name away.';
+  $('guess-line').textContent = `${guessRival ? `${guessRival.name || 'Your friend'} made ${guessRival.points}. ` : ''}A wrong pick costs 250 points and takes that name away.`;
   $('guess-after').hidden = true;
   $('guess-before').hidden = false;
   $('guess-tally').textContent = tallyLine();
@@ -600,6 +616,16 @@ function pick(name: string, b: HTMLButtonElement): void {
   const s = Math.round(lookedS);
   $('guess-line').textContent = got ? `After ${s < 60 ? `${s} seconds` : fmtTime(s)} of looking${wrongPicks ? ` and ${wrongPicks === 1 ? 'one wrong pick' : `${wrongPicks} wrong picks`}` : ''}.` : 'Three wrong picks leave only one name.';
   $('guess-tally').textContent = tallyLine();
+  justGuessed = { name: '', points: got, seconds: s, wrong: wrongPicks, round };
+  const theirs = guessRival;
+  const who = theirs?.name || 'your friend';
+  $('guess-rival').hidden = !theirs;
+  if (theirs) $('guess-rival').textContent = got > theirs.points ? `You beat ${who}, who made ${theirs.points} after ${secs(theirs.seconds)}.` : got === theirs.points ? `Level with ${who}: ${theirs.points} each.` : `${cap(who)} stays ahead with ${theirs.points} after ${secs(theirs.seconds)}.`;
+  $('btn-guess-send').textContent = theirs ? `Send yours back to ${who}` : 'Send it to a friend to guess';
+  $('guess-note').textContent = 'Makes a link to send: the same place and the same four names, with your points to beat. The link doesn’t say which city it is.';
+  $('guess-link').hidden = true;
+  $<HTMLInputElement>('guess-name').value = lastName();
+  guessRival = null;
   $('guess-before').hidden = true;
   $('guess-after').hidden = false;
 }
@@ -615,6 +641,34 @@ $('btn-guess').addEventListener('click', () => {
   $('btn-guess').blur();
 });
 $('btn-guess-back').addEventListener('click', closeGuess);
+$('btn-guess-send').addEventListener('click', async () => {
+  if (!justGuessed) return;
+  const g = { ...justGuessed, name: $<HTMLInputElement>('guess-name').value.trim().slice(0, 16) };
+  const code = packGuess(g);
+  countMade(code, g.round.at);
+  // no place after the #: it would give the city away
+  const url = `${linkHome(location)}?g=${code}`;
+  const text = g.points ? `Where am I? I knew this city after ${secs(g.seconds)}: ${g.points} points. Can you beat that?` : 'Where am I? I didn’t get this city. Do you?';
+  const theirs = 'Whoever opens it is put down where you were.';
+  const box = $<HTMLInputElement>('guess-link');
+  box.value = url;
+  box.hidden = false;
+  const note = $('guess-note');
+  try {
+    // a phone offers its own list of apps to send with
+    if (document.body.classList.contains('touch') && navigator.share) {
+      await navigator.share({ text, url });
+      note.textContent = theirs;
+      return;
+    }
+    await navigator.clipboard.writeText(`${text} ${url}`);
+    note.textContent = `Link copied. ${theirs}`;
+  } catch {
+    box.select();
+    note.textContent = `Copy this link and send it. ${theirs}`;
+  }
+});
+$('guess-link').addEventListener('focus', (e) => (e.target as HTMLInputElement).select());
 $('btn-guess-stay').addEventListener('click', () => {
   closeGuess();
   toast('Open jobs from the stations in town', 'info');
@@ -1240,7 +1294,10 @@ const sentRun = code ? readChallenge(code) : null;
 if (!BAKED) cameByVideo(new URLSearchParams(location.search));
 if (sentRun) countOpened(sentRun.course.start);
 const invited = BAKED ? '' : battleInLink(location.search);
+const sentGuess = BAKED || sentRun ? null : readGuess(new URLSearchParams(location.search).get('g') ?? '');
+if (sentGuess) countOpened(sentGuess.round.at);
 if (sentRun) void go(sentRun.course.start, sentRun.place || undefined, sentRun, invited);
+else if (sentGuess) void drop(sentGuess);
 else if (fromLink) void go(fromLink);
 else if (linked) {
   $<HTMLInputElement>('q').value = linked;

@@ -334,3 +334,7 @@ body.secret #btn-radio, body.secret #radio-bar { display: none; }
   body.secret #job:not([hidden]) ~ #btn-guess { top: calc(112px + env(safe-area-inset-top)); }
   body.secret #toasts { top: calc(118px + env(safe-area-inset-top)); }
 }
+#guess-after[hidden], #guess-link[hidden] { display: none; }
+#guess-name, #guess-link { width: 100%; box-sizing: border-box; margin: 8px 0 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #181b20; color: var(--ink); font: inherit; font-size: 16px; }
+#btn-guess-send { width: 100%; margin-top: 8px; padding: 13px; font-size: 17px; }
+#guess-rival { color: var(--ink); font-size: 15px; }
