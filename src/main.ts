@@ -3,7 +3,7 @@
  * the touch stick, step the game, draw, and keep the numbers on screen up to date.
  */
 
-import { Game, RUN_JOBS, type Course, type Hud } from './game/game';
+import { Game, MAX_CASH, RUN_JOBS, type Course, type Hud } from './game/game';
 import { linkHome, packChallenge, readChallenge, type Challenge } from './challenge';
 import { cameByVideo, countMade, countOpened, playingAt } from './linkCount';
 import { arrive as cloudArrive, changed } from './cloud';
@@ -221,6 +221,9 @@ async function go(at: LngLat, name?: string, sent: Challenge | null = null): Pro
       game = new Game(canvas, small);
       const saved = load();
       game.cash = saved.cash;
+      // test builds only: `?try=rich` (VITE_TESTING=1), or every start (VITE_TESTING=rich), begins with the
+      // most cash there is, to try buying homes
+      if (import.meta.env.VITE_TESTING === 'rich' || (import.meta.env.VITE_TESTING && new URLSearchParams(location.search).get('try')?.split(',').includes('rich'))) game.cash = MAX_CASH;
       game.delivered = saved.delivered;
       game.onToast = toast;
       game.onFlash = (t) => flash(t);
