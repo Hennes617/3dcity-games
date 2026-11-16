@@ -98,6 +98,8 @@ export function wireRadio(
   place: () => { lat: number; lon: number } | null,
   inCar: () => boolean,
   say: (text: string, kind?: 'good' | 'bad' | 'info') => void,
+  /** true while the town is to be guessed: a station's name would give it away */
+  secret: () => boolean = () => false,
 ): void {
   if (!radioOn()) return;
   button.hidden = false;
@@ -158,13 +160,19 @@ export function wireRadio(
       return;
     }
     const s = stations[at % stations.length];
-    show(`${s.name} · ${(at % stations.length) + 1} of ${stations.length}`);
+    show(label());
     audio.src = s.url;
     void audio.play().catch(() => undefined);
     // a station that stays silent is skipped
     giveUp = window.setTimeout(skip, START_WITHIN_MS);
     // the directory asks to be told which stations are listened to
     if (s.id) void ask(`/json/url/${s.id}`).catch(() => undefined);
+  }
+
+  /** the station playing, by name, or only by number while the town is to be guessed */
+  function label(): string {
+    const s = stations[at % stations.length];
+    return `${secret() ? 'Local radio' : s.name} · ${(at % stations.length) + 1} of ${stations.length}`;
   }
 
   function skip(): void {
@@ -259,6 +267,11 @@ export function wireRadio(
   // the stations of the town you are in by then
   setInterval(() => {
     if (!on) return;
+    // the name comes back once the town has been guessed
+    if (!waiting && stations.length && nameEl.textContent?.includes(' of ')) {
+      const text = label();
+      if (nameEl.textContent !== text) nameEl.textContent = text;
+    }
     const sitting = inCar();
     if (!sitting && !waiting) {
       waiting = true;

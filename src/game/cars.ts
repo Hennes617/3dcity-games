@@ -140,6 +140,8 @@ export class Car {
   /** how much of a knock becomes damage: 1 for an ordinary car, less for a sturdy one */
   dent = 1;
   gone = false;
+  /** how far the car has gone down into water (m) */
+  sink = 0;
 
   constructor(readonly kind: CarKind, readonly colour = PAINT[Math.floor(Math.random() * PAINT.length)], tune?: { top?: number; acc?: number }) {
     // a car of its own make: the looks of its kind, with its own top speed and pull
@@ -210,8 +212,8 @@ export class Car {
     const y0 = this.y;
     this.x += this.vx * dt;
     this.y += this.vy * dt;
-    // the water's edge is railed: you bounce off it instead of going in
-    if (world.inWater(this.x, this.y)) {
+    // the water's edge is railed for traffic: other drivers bounce off it. The player's car goes in, and sinks.
+    if (this.driver !== 'player' && world.inWater(this.x, this.y)) {
       if (!world.inWater(x0, y0)) {
         this.x = x0;
         this.y = y0;
@@ -263,8 +265,10 @@ export class Car {
   }
 
   place(world: World): void {
-    this.mesh.position.set(this.x, world.groundY(this.x, this.y), -this.y);
+    this.mesh.position.set(this.x, world.groundY(this.x, this.y) - this.sink, -this.y);
     this.mesh.rotation.y = this.th;
+    // going down nose first
+    this.mesh.rotation.z = this.sink * 0.12;
   }
 }
 

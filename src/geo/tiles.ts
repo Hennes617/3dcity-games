@@ -312,7 +312,11 @@ export function parseTiles(tiles: LoadedTile[], center: LngLat, sizeM: number): 
       const toLocal = tileProjector(t, extentOf('landuse'), proj);
       eachFeature(layers.landuse, (f) => {
         const kind = LANDUSE_KIND[str(f.properties.class)];
-        if (kind && f.type === 3) clipArea(kind, polygonsOf(f, toLocal));
+        if (!kind || f.type !== 3) return;
+        const before = areas.length;
+        clipArea(kind, polygonsOf(f, toLocal));
+        // a sports ground is drawn apart from the rest of the green
+        if (areas.length > before) areas[before].cls = str(f.properties.class);
       });
     }
     {

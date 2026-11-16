@@ -14,6 +14,7 @@ import { buildRoadMeshes, disposeRoadMeshes, showRelief } from './roadMesh';
 import { RoadNet } from './roads';
 import { Solids, Streams, WaterMask } from './solids';
 import { basinMesh, takeBasins } from './basins';
+import { pitchMesh, takePitches } from './pitches';
 import type { AreaFeature } from '../geo/osm';
 import { sightsIn, type Sight } from '../landmarks';
 import { localColours } from './localColours';
@@ -399,6 +400,8 @@ export class World {
     await breathe();
     // small water becomes basins with a rim, taken out of what is painted on the ground
     const basins = takeBasins(data.features.areas, AREA_SIZE_M / 2);
+    // sports grounds too: turf with sharp edges and white lines
+    const pitches = takePitches(data.features.areas, AREA_SIZE_M / 2);
     model.setFeatures(data.features);
     const colours = localColours(data.colours, makeProjector(centre));
     model.setBuildingTint((e, n) => colours.at(e, n));
@@ -422,6 +425,8 @@ export class World {
     model.group.add(signs);
     const basinShape = basinMesh(basins, (x, y) => surfaceY(model, x, y));
     if (basinShape) signs.add(basinShape);
+    const pitchShape = pitchMesh(pitches, (x, y) => surfaceY(model, x, y));
+    if (pitchShape) signs.add(pitchShape);
     const world = new World(centre, model, roads, solids, water, new Streams(data.features.lines), ribbons, stops, signs, buildings.length);
     world.buildings = walls;
     world.streetNames = readStreetNames(tiles, world.proj, AREA_SIZE_M / 2);

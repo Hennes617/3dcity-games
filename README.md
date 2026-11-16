@@ -18,6 +18,7 @@ the streets, buildings, water and hills come from the same map squares as
   kept back; street names on the big map stay, as a clue (`src/guess.ts`). A city you have guessed can be
   sent on: the link (`?g=…`) puts a friend down at the same spot with the same four names and your
   points to beat, and does not say which city it is. All of it travels in the link, as with a run.
+  The radio plays here too, with the stations' names held back until the pick.
 - The first time you play, a short tour walks you through it: get in, pick up, deliver, and what the
   police are about. It moves on as you do each thing, and can be skipped.
 - You start on foot beside a parked car. Walk up to any car and get in: parked ones are free, taking one

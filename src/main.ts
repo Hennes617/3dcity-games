@@ -400,6 +400,10 @@ async function drop(sent: SentGuess | null = null): Promise<void> {
       minimap.secret = bigmap.secret = true;
       document.body.classList.add('secret');
       $('btn-guess').hidden = false;
+      // it is a button: it says so by moving a little, while the sign is up and just after
+      $('btn-guess').classList.remove('nudge');
+      void $('btn-guess').offsetWidth;
+      $('btn-guess').classList.add('nudge');
       status.textContent = '';
       return;
     }
@@ -894,7 +898,7 @@ function frame(now: number): void {
   if (secret) {
     // a frame that took long (the next streets arriving) is not time spent looking
     lookedS += Math.min(dt, 0.25);
-    put('btn-guess', `Guess the city<b>${points(lookedS, wrongPicks)}</b>`);
+    put('btn-guess', `<span>Guess the city<b>${points(lookedS, wrongPicks)}</b></span><small>tap when you know</small>`);
   }
   sound.hear(game.ears());
   if (showFps) fpsReadout(dt);
@@ -1149,4 +1153,4 @@ else if (linked) {
 }
 
 // a trial (`?try=radio`): a car radio with stations of the town
-wireRadio($<HTMLButtonElement>('btn-radio'), $('radio-bar'), () => (game?.world ? game.world.centre : null), () => playing && !!game?.car, toast);
+wireRadio($<HTMLButtonElement>('btn-radio'), $('radio-bar'), () => (game?.world ? game.world.centre : null), () => playing && !!game?.car, toast, () => !!secret);

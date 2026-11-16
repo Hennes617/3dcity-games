@@ -215,6 +215,10 @@ export class Game {
   private readonly smoke: Array<{ mesh: Mesh<SphereGeometry, MeshBasicMaterial>; life: number }> = [];
   private smokeT = 0;
   private sprayT = 0;
+  /** the player's car is going down in water: where the shore was, and for how long it has sunk */
+  private sinking: { car: Car; t: number; shore: [number, number] } | null = null;
+  /** where the player's car last stood on dry ground */
+  private dry: [number, number] = [0, 0];
   private noSmoke = false;
   /** off in tests that only step the game */
   render = true;
@@ -424,6 +428,7 @@ export class Game {
     this.me.y = py;
     this.me.hp = 100;
     this.car = null;
+    this.sinking = null;
     this.heat = 0;
     this.cam = { x: px, y: py, h: ARRIVE_M };
     this.descent = ARRIVE_HOLD_S + DESCENT_S;
@@ -566,6 +571,58 @@ export class Game {
     this.cars.push(c);
     this.scene.add(c.mesh);
     return c;
+  }
+
+  /** Fording a stream: the water holds the car back and sprays. */
+  private ford(c: Car, dt: number): void {
+    if (c.speed > 4) {
+      const k = Math.exp(-3.2 * dt);
+      c.vx *= k;
+      c.vy *= k;
+    }
+    this.sprayT -= dt;
+    if (this.sprayT <= 0) {
+      this.sprayT = 0.07;
+      this.cloud(c.x + (Math.random() - 0.5) * 2, c.y + (Math.random() - 0.5) * 2, 0.5, '#bfe0f2');
+    }
+  }
+
+  /** The player's car going down. After a moment it is gone, and the player stands where it left the shore. */
+  private sink(dt: number): void {
+    const s = this.sinking!;
+    const c = s.car;
+    s.t += dt;
+    const k = Math.exp(-2.5 * dt);
+    c.vx *= k;
+    c.vy *= k;
+    c.sink = Math.min(2.6, s.t * s.t * 1.8);
+    this.sprayT -= dt;
+    if (s.t < 0.8 && this.sprayT <= 0) {
+      this.sprayT = 0.05;
+      this.cloud(c.x + (Math.random() - 0.5) * 4, c.y + (Math.random() - 0.5) * 4, 0.4 + Math.random(), pickOne(['#bfe0f2', '#e6f3fa', '#9ccbe6']));
+    }
+    if (s.t < 1.3 && this.car === c) return;
+    this.sinking = null;
+    c.sink = 0;
+    if (this.car === c) {
+      c.driver = 'none';
+      c.controls.throttle = 0;
+      this.car = null;
+      // out a step further on dry ground, away from the water
+      const [sx, sy] = s.shore;
+      const dx = sx - c.x;
+      const dy = sy - c.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const out: [number, number] = [sx + (dx / d) * 1.5, sy + (dy / d) * 1.5];
+      const [x, y] = this.world.inWater(out[0], out[1]) ? [sx, sy] : out;
+      this.me.x = x;
+      this.me.y = y;
+      this.me.vx = 0;
+      this.me.vy = 0;
+      this.frozen = 0.5;
+      this.onToast('The car sank. You swam back to the shore', 'bad');
+    }
+    this.dropCar(c);
   }
 
   private dropCar(c: Car): void {
@@ -1542,7 +1599,8 @@ export class Game {
     const live = this.frozen <= 0;
 
     if (this.auto && live) this.autopilot(dt);
-    else if (this.car) this.steerMine(this.car, input, dt);
+    else if (this.car && !this.sinking) this.steerMine(this.car, input, dt);
+    else if (this.car) Object.assign(this.car.controls, { throttle: 0, steer: 0, handbrake: false });
     else if (live) this.walk(input, dt);
     for (const c of this.cars) if (!c.gone && (c.driver === 'ai' || c.driver === 'cop')) this.drive(c, dt);
 
@@ -1589,30 +1647,26 @@ export class Game {
       if (c.gone) continue;
       const far = Math.hypot(c.x - px, c.y - py);
       if (w.inWater(c.x, c.y)) {
+        // your own car goes down slowly, with you in it, and you come up on the shore
         if (c === this.car) {
-          this.onToast('Splash! That car is gone', 'bad');
-          this.onSound('splash');
-          this.toRoad(0, 0);
+          if (!this.sinking) {
+            this.sinking = { car: c, t: 0, shore: this.dry };
+            this.onToast('Splash!', 'bad');
+            this.onSound('splash');
+          }
+          continue;
         }
         this.dropCar(c);
-      } else if (c === this.car && c.speed > 1 && w.inStream(c.x, c.y)) {
-        // fording a stream: the water holds the car back and sprays
-        if (c.speed > 4) {
-          const k = Math.exp(-3.2 * dt);
-          c.vx *= k;
-          c.vy *= k;
-        }
-        this.sprayT -= dt;
-        if (this.sprayT <= 0) {
-          this.sprayT = 0.07;
-          this.cloud(c.x + (Math.random() - 0.5) * 2, c.y + (Math.random() - 0.5) * 2, 0.5, '#bfe0f2');
-        }
+      } else if (c === this.car) {
+        this.dry = [c.x, c.y];
+        if (c.speed > 1 && w.inStream(c.x, c.y)) this.ford(c, dt);
       } else if (c.driver === 'ai' || c.driver === 'cop') {
         const limit = this.chasing(c) ? 420 : this.viewR + 190;
         if (far > limit || Math.abs(c.x) > w.half - 8 || Math.abs(c.y) > w.half - 8 || (c.hp <= 0 && far > this.viewR + 20)) this.dropCar(c);
         else if (c.hp <= 0) c.driver = 'none';
       }
     }
+    if (this.sinking) this.sink(dt);
     this.sweep();
     if (!this.car && live && w.inWater(this.me.x, this.me.y)) {
       this.onToast('Splash!', 'bad');
