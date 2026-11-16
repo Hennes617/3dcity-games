@@ -51,7 +51,7 @@ const tidy = (r: Ring): Ring => {
 };
 
 /** The box around a ring: west, south, east, north. */
-function bounds(r: Ring): [number, number, number, number] {
+export function bounds(r: Ring): [number, number, number, number] {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const p of r) {
     x0 = Math.min(x0, p[0]);
@@ -63,7 +63,7 @@ function bounds(r: Ring): [number, number, number, number] {
 }
 
 /** The tightest box along one of the ring's own sides, if the ring nearly fills it. */
-function asRect(ring: Ring): Pitch['rect'] {
+export function asRect(ring: Ring): Pitch['rect'] {
   const area = Math.abs(ringArea(ring));
   let best: Pitch['rect'] = null;
   let bestArea = Infinity;

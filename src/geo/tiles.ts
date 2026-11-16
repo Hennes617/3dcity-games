@@ -208,6 +208,8 @@ const ROAD_KIND: Record<string, [LineKind, number]> = {
   track: ['service', 3],
   raceway: ['service', 6],
   path: ['path', 1.8],
+  // a pier drawn as a line: a narrow jetty, boards over the water
+  pier: ['path', 2.4],
 };
 
 const WATERWAY_KIND: Record<string, [LineKind, number]> = {
@@ -328,6 +330,12 @@ export function parseTiles(tiles: LoadedTile[], center: LngLat, sizeM: number): 
         if (f.type === 3) {
           // pedestrian squares and platforms come as areas
           if (cls === 'path' && str(f.properties.subclass) === 'pedestrian') clipArea('plaza', polygonsOf(f, toLocal));
+          // a pier or wharf over the water; the game draws it as a deck of its own
+          if (cls === 'pier') {
+            const before = areas.length;
+            clipArea('plaza', polygonsOf(f, toLocal));
+            if (areas.length > before) areas[before].cls = 'pier';
+          }
           return;
         }
         if (f.type !== 2) return;
