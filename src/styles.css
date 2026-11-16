@@ -295,3 +295,17 @@ html body.radio-on #minimap[data-corner='tr'] { top: calc(168px + env(safe-area-
 #cloud-form input, #cloud-url { flex: 1 1 150px; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #181b20; color: var(--ink); font: inherit; font-size: 16px; }
 #cloud-url { width: 100%; box-sizing: border-box; margin-top: 6px; }
 #cloud-url[hidden] { display: none; }
+
+/* homes: the offer after a run, and the panel beside a building that is for sale */
+#result-home { margin: 10px 0 12px; padding: 12px 14px; border: 1px solid rgba(95, 211, 138, 0.45); border-radius: 12px; background: rgba(95, 211, 138, 0.07); display: grid; gap: 6px; }
+#result-home[hidden] { display: none; }
+#result-home p { margin: 0; }
+#result-home b { font-size: 16px; }
+#result-home button.buy { justify-self: start; background: var(--green); color: #1c1f24; border-color: transparent; }
+#forsale { pointer-events: auto; right: calc(12px + env(safe-area-inset-right)); top: calc(170px + env(safe-area-inset-top)); width: min(320px, calc(100vw - 32px)); display: grid; gap: 6px; font-size: 14px; line-height: 1.35; }
+#forsale[hidden] { display: none; }
+#forsale p { margin: 0; }
+#forsale button { padding: 8px 12px; border-radius: 10px; border: 1px solid transparent; background: var(--green); color: #1c1f24; font-weight: 600; text-align: left; }
+#forsale button + button { background: #30353e; color: var(--ink); border-color: var(--line); }
+#forsale button:disabled { opacity: 0.45; cursor: default; }
+@media (max-width: 640px) { #forsale { right: auto; left: 50%; transform: translateX(-50%); top: calc(210px + env(safe-area-inset-top)); width: min(300px, calc(100vw - 32px)); font-size: 13px; } }

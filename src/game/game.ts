@@ -954,7 +954,7 @@ export class Game {
     return this.car ? [this.car.vx, this.car.vy] : [this.me.vx, this.me.vy];
   }
 
-  private speed(): number {
+  speed(): number {
     const [vx, vy] = this.vel();
     return Math.hypot(vx, vy);
   }

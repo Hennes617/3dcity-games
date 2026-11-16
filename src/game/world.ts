@@ -18,7 +18,8 @@ import type { AreaFeature } from '../geo/osm';
 import { sightsIn, type Sight } from '../landmarks';
 import { localColours } from './localColours';
 import { calmGround } from './ground';
-import { readStreetNames, type StreetLabel } from './streetNames';
+import { readNamedStreets, readStreetNames, type StreetLabel } from './streetNames';
+import { findLots, type Lot } from './homes';
 import { subwayEntrances, subwayLetter, type EntranceSpot } from './subwaySign';
 import { stopShapes, type StopSign, type StopSpot } from './stopShapes';
 import { addWindows, styleWindows, windowsOn } from './windows';
@@ -321,7 +322,10 @@ export class World {
   readonly services: Service[] = [];
 
   /** the buildings that are walls here: outline in metres from the middle of the square, and height */
-  buildings: Array<{ poly: Polygon; height: number }> = [];
+  buildings: Array<{ poly: Polygon; height: number; id?: string }> = [];
+
+  /** the buildings that are for sale, with their prices (`homes.ts`) */
+  lots: Lot[] = [];
 
   /** schools, places of worship, hospitals and the like: where they lie, so an add-on can leave them alone */
   reserved: Array<{ x: number; y: number }> = [];
@@ -371,7 +375,7 @@ export class World {
       stops.push(st);
     }
     await breathe();
-    const buildings = data.buildings.map((b) => ({ poly: b.poly, height: gameHeight(b.height), minHeight: gameHeight(b.minHeight), estimated: false, heightKnown: true }));
+    const buildings = data.buildings.map((b) => ({ poly: b.poly, height: gameHeight(b.height), minHeight: gameHeight(b.minHeight), estimated: false, heightKnown: true, id: b.id, realHeight: b.height }));
     // roofs out of the ground and the sea to sea level, before anything is built on it
     calmGround(grid, buildings, data.features.sea);
     const model = new CityModel(grid, texturePx, '#ffcc00');
@@ -434,6 +438,19 @@ export class World {
     // the map puts such a place on its building: the symbol lies on the roof, where it can be seen
     for (const sv of world.services) signs.add(serviceSign(sv, (x, y) => surfaceY(model, x, y) + solids.tallestNear(x, y, 5) + 0.2, (x, y) => surfaceY(model, x, y)));
     if (!world.sights.length) world.sights.push(...townSights(tiles, world.proj, AREA_SIZE_M / 2 - 8));
+    await breathe();
+    const sightPts = world.sights.map((s): [number, number] => [s.x, s.y]);
+    world.lots = findLots(
+      walls.filter((b) => b.minHeight < 1).map((b) => ({ poly: b.poly, height: b.realHeight, id: b.id })),
+      {
+        areas: data.features.areas,
+        lines: data.features.lines,
+        keepClear: [...sightPts, ...world.services.map((s): [number, number] => [s.x, s.y]), ...world.reserved.map((r): [number, number] => [r.x, r.y])],
+        sights: sightPts,
+        streets: readNamedStreets(tiles, world.proj, AREA_SIZE_M / 2),
+        half: AREA_SIZE_M / 2,
+      },
+    );
     return world;
   }
 

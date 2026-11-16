@@ -137,6 +137,17 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   Ottawa and clear in Hong Kong.
 - **Keep it its own thing.** The name nods at a famous game; the look, the mark and the wording must not
   imitate that game or any other. No references to it in the product or its publicity.
+- **Homes to buy, so players come back (owner, 16 November 2026).** Chosen over a visitor counter as the
+  first thing to do: "make them come back by implementing a reason". Decided: houses before cars, because
+  they are tied to the map ("cars belong to individuals, later"); personal ownership (each player their own
+  copy of the city), not shared, because cash lives in the browser and could be faked, real people's homes
+  would carry player names, and newcomers would find streets taken; rent by the real hour, offered right
+  after the run of three, with an affordable flat near the end "but just enough", and bigger houses shown at
+  higher prices. Prices from the map alone for now (works in every village); real rent or land-value data,
+  where a city publishes it, is a later step and is to touch prices only. Numbers to tune after the owner
+  plays: `FLAT_BASE` 900, rent 3.5 % of the price an hour, one day's rent at most waiting. Built on branch
+  `claude/homes`, not yet shown to the owner or deployed. Checked in Nuremberg, Manhattan, Berlin and two
+  Black Forest / Franconian places: cheapest flat $640–700 everywhere, 40–60 ms to price an area.
 - **Planned: move the game's home to https://mindmacher.com/3da/ (owner, 16 November 2026), then SEO.**
   Today that address is only a forwarder to github.io, tagged `?ref=youtube`, with `noindex`
   (`docs/mindmacher/3da/index.html`; the site is Hostinger shared hosting). Checked: the build uses a

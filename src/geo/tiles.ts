@@ -38,6 +38,8 @@ export interface TileBuilding {
   minHeight: number;
   /** false where OpenStreetMap has no height or floor count: the tiles then say 5 m */
   heightKnown: boolean;
+  /** the map's own number for the building (OpenStreetMap's, as the tiles give it): the same in every tile and on every visit */
+  id?: string;
 }
 
 /** A building whose colour (or material) a mapper recorded: where it stands, the colour, its height. */
@@ -265,6 +267,7 @@ export function parseTiles(tiles: LoadedTile[], center: LngLat, sizeM: number): 
         const heightKnown = f.properties.render_height != null && num(f.properties.render_height, 5) !== 5;
         const minHeight = Math.max(0, Math.min(num(f.properties.render_min_height, 0), height - 0.5));
         const colour = /^#[0-9a-f]{6}$/i.test(str(f.properties.colour)) ? str(f.properties.colour) : '';
+        const id = f.id != null ? String(f.id) : '';
         for (const p of polygonsOf(f, toLocal)) {
           for (const c of clipBuildingToRect(p, bw, bs, be, bn, 2)) {
             const [x0, y0, x1, y1] = ringBounds(c.outer);
@@ -272,10 +275,11 @@ export function parseTiles(tiles: LoadedTile[], center: LngLat, sizeM: number): 
             const eps = 1e-6;
             const onSeam = (bw > -h && x0 <= bw + eps) || (be < h && x1 >= be - eps) || (bs > -h && y0 <= bs + eps) || (bn < h && y1 >= bn - eps);
             if (!onSeam) {
-              buildings.push({ poly: c, height, minHeight, heightKnown });
+              buildings.push({ poly: c, height, minHeight, heightKnown, id });
               continue;
             }
-            const key = `${height}|${minHeight}|${heightKnown ? 1 : 0}`;
+            // the pieces of one building are joined again, and only with each other
+            const key = `${height}|${minHeight}|${heightKnown ? 1 : 0}|${id}`;
             const list = seamPieces.get(key);
             if (list) list.push(c);
             else seamPieces.set(key, [c]);
@@ -346,8 +350,9 @@ export function parseTiles(tiles: LoadedTile[], center: LngLat, sizeM: number): 
     collectPlaces(t, proj, settlements);
   }
   for (const [key, pieces] of seamPieces) {
-    const [height, minHeight, known] = key.split('|').map(Number);
-    for (const poly of joinPieces(pieces)) buildings.push({ poly, height, minHeight, heightKnown: known === 1 });
+    const [h0, m0, k0, id] = key.split('|');
+    const [height, minHeight, known] = [h0, m0, k0].map(Number);
+    for (const poly of joinPieces(pieces)) buildings.push({ poly, height, minHeight, heightKnown: known === 1, id });
   }
 
   return { buildings, colours, features: { areas, lines, coastlines: [], sea }, settlements: [...settlements.values()] };

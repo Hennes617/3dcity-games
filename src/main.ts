@@ -10,6 +10,7 @@ import { arrive as cloudArrive, changed } from './cloud';
 import { wireCloud } from './cloudUi';
 import { Sound } from './sound';
 import { addonHost } from './addon';
+import { HomesUi } from './homesUi';
 import { fullNote } from './full';
 import { wireRadio } from './radio';
 import { serviceIcon, type ServiceKind } from './game/services';
@@ -42,6 +43,7 @@ if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch'
 addEventListener('pointerdown', (e) => document.body.classList.toggle('touch', e.pointerType === 'touch'), true);
 
 let game: Game | null = null;
+let homes: HomesUi | null = null;
 const sound = new Sound();
 let playing = false;
 let busy = false;
@@ -242,6 +244,7 @@ async function go(at: LngLat, name?: string, sent: Challenge | null = null): Pro
       controls.onMap = () => showMap(true);
       game.showRoute = routeLine();
       (window as unknown as { game: Game }).game = game;
+      homes = new HomesUi({ game, toast, save: () => save(), place: () => placeName });
       addonHost({ game, toast, api: 2 });
       // a tester's key was in play: say how it went
       void fullNote.then((n) => n && toast(n.text, n.kind));
@@ -470,6 +473,7 @@ function drawBoard(): void {
 /** Show the scoreboard over whatever is on screen; with a run that has just ended, its result too. */
 function showBoard(run: Score | null): void {
   fresh = run;
+  $('result-home').hidden = true;
   const won = !!run && !!rival && (run.score > rival.score || (run.score === rival.score && run.seconds < rival.seconds));
   const them = rival?.name || 'The run you were sent';
   $('result-title').textContent = !run ? 'Scoreboard' : !rival ? 'Run complete' : won ? `You beat ${rival.name || 'the run you were sent'}` : `${them} stays ahead`;
@@ -518,6 +522,8 @@ function runEnded(score: number, seconds: number): void {
   freshCourse = game ? { start: game.course.start, legs: [...game.course.legs] } : null;
   addScore(run);
   showBoard(run);
+  // a home for the cash just made, near where the run ended
+  homes?.offer($('result-home'));
 }
 
 $<HTMLFormElement>('result-form').addEventListener('submit', (e) => {

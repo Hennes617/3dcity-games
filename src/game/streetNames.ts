@@ -81,3 +81,29 @@ export function readStreetNames(tiles: LoadedTile[], proj: Projector, half: numb
   }
   return kept;
 }
+
+/** Every named street piece in the square, of any size, as points: to say which street a building stands on. */
+export function readNamedStreets(tiles: LoadedTile[], proj: Projector, half: number): Array<{ name: string; pts: Array<[number, number]> }> {
+  const out: Array<{ name: string; pts: Array<[number, number]> }> = [];
+  for (const t of tiles) {
+    const layer = t.tile.layers.transportation_name;
+    if (!layer) continue;
+    const n = 2 ** t.z;
+    for (let i = 0; i < layer.length; i++) {
+      const f = layer.feature(i);
+      if (f.type !== 2) continue;
+      const name = String(f.properties['name:latin'] ?? f.properties.name ?? '').trim();
+      if (!name) continue;
+      for (const line of f.loadGeometry()) {
+        const pts: Array<[number, number]> = [];
+        for (const p of line) {
+          const lon = ((t.x + p.x / layer.extent) / n) * 360 - 180;
+          const lat = (Math.atan(Math.sinh(Math.PI * (1 - (2 * (t.y + p.y / layer.extent)) / n))) * 180) / Math.PI;
+          pts.push(proj.toLocal(lon, lat));
+        }
+        if (pts.length >= 2 && pts.some(([x, y]) => Math.abs(x) < half + 60 && Math.abs(y) < half + 60)) out.push({ name, pts });
+      }
+    }
+  }
+  return out;
+}

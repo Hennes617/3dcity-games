@@ -31,6 +31,18 @@ the streets, buildings, water and hills come from the same map squares as
 - **Three deliveries make a run.** Each drop-off is a little farther and the clock a little tighter than
   the one before. What the three earn, less any fines, is the score; it goes on a scoreboard, with your
   name if you care to write one. The board is kept in the browser, so it is the board of one device.
+- **Homes.** Cash buys flats and houses, and each pays rent by the real hour, also while the game is closed,
+  up to one day's worth: that waits for you on the next visit ("Welcome back…"). While playing, rent comes in
+  every ten minutes. Right after a run of three, the result card offers the dearest flat or house near where
+  it ended that the cash will buy, and a bigger one to save up for. Stop beside any building to see its price:
+  a block of three floors or more is split into flats (one flat, or the whole building); a smaller building
+  is a house. Sheds, big low halls, towers and anything at a sight, school, place of worship or marked
+  station are not for sale. Prices are a guess from the map, ranked within each area so every town has its
+  cheap and dear streets: a dense part of town, a park, water or a sight close by raise it; a big road or
+  railway outside and a district of halls lower it. The cheapest flats cost about one run's pay. Where a
+  place has hardly any blocks of flats, its bigger houses hold flats. Owned buildings carry a yellow house on
+  the roof and on both maps. Each player owns their own copy of the city. What you own is kept in the browser
+  (`3da-homes`) beside your cash, so online saving carries it along (`src/game/homes.ts`, `src/homesUi.ts`).
 - **A place opens seen from above:** about a kilometre of it for a second, then the view comes down to you
   in three and a half seconds, so you see where in the town you are. You can move straight away. When a run ends
   the view rises again behind the result, and comes back down when you drive on.
@@ -159,6 +171,8 @@ terrain tiles as `t-{z}-{x}-{y}.png`, vector tiles as base64 text in `v-{z}-{x}-
 - `src/game/roadMesh.ts`: roads as ribbons on the terrain, sharp from close up.
 - `src/game/cars.ts`: the car: how it looks, moves and collides.
 - `src/game/game.ts`: you, traffic, people, police, jobs, camera.
+- `src/game/homes.ts`: which buildings are for sale and their prices, what the player owns, and the rent.
+  `src/homesUi.ts`: the offer after a run, the panel beside a building, the roof marks and the rent on return.
 - `src/addon.ts`: where an extra feature plugs in. The game loads an add-on only when it is handed its
   address (`loadAddon(address)`); on its own it loads none.
   For such a file the game can stand a car in the world, take one out, lay a ring, put a symbol on a
@@ -168,7 +182,7 @@ terrain tiles as `t-{z}-{x}-{y}.png`, vector tiles as base64 text in `v-{z}-{x}-
 - `src/challenge.ts`: a run as a link (`?c=…`): the places of its deliveries and the score to beat.
 - `src/game/input.ts`, `src/main.ts`: keys and touch, the start screen and the numbers on screen.
 - `src/geo/`, `src/scene/`, `src/export/`, `src/data/`: the 3D engine, copied from Walk it 3D / Your Place
-  (MIT). Changed here: the tile cache's name, and `geo/tiles.ts` also hands on the colours mappers recorded for buildings. It also marks which footpaths are stairways.
+  (MIT). Changed here: the tile cache's name, and `geo/tiles.ts` also hands on the colours mappers recorded for buildings and each building's map number. It also marks which footpaths are stairways.
 
 Heights of tall buildings are squashed (above 18 m only 30 % counts) so the camera can stay close.
 There are no traffic lights, level-crossing barriers or one-way streets, and bus and tram lines are not the real routes: vehicles follow
