@@ -17,6 +17,7 @@ import { basinMesh, takeBasins } from './basins';
 import type { AreaFeature } from '../geo/osm';
 import { sightsIn, type Sight } from '../landmarks';
 import { localColours } from './localColours';
+import { localHeights } from './localHeights';
 import { calmGround } from './ground';
 import { readStreetNames, type StreetLabel } from './streetNames';
 import { subwayEntrances, subwayLetter, type EntranceSpot } from './subwaySign';
@@ -371,6 +372,8 @@ export class World {
       stops.push(st);
     }
     await breathe();
+    // a building with no recorded height takes its neighbours', before tall ones are squashed
+    const heightCounts = localHeights(data.buildings);
     const buildings = data.buildings.map((b) => ({ poly: b.poly, height: gameHeight(b.height), minHeight: gameHeight(b.minHeight), estimated: false, heightKnown: true }));
     // roofs out of the ground and the sea to sea level, before anything is built on it
     calmGround(grid, buildings, data.features.sea);
@@ -400,6 +403,7 @@ export class World {
     const colours = localColours(data.colours, makeProjector(centre));
     model.setBuildingTint((e, n) => colours.at(e, n));
     (model as unknown as { roofCounts: unknown }).roofCounts = colours.counts;
+    (model as unknown as { heightCounts: unknown }).heightCounts = heightCounts;
     await breathe();
     const roads = new RoadNet(data.features.lines, AREA_SIZE_M / 2);
     await breathe();
