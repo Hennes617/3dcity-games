@@ -5,7 +5,7 @@
 
 import { Game, MAX_CASH, RUN_JOBS, type Course, type Hud } from './game/game';
 import { linkHome, packChallenge, readChallenge, type Challenge } from './challenge';
-import { cameByVideo, countMade, countOpened, playingAt } from './linkCount';
+import { cameByVideo, countMade, countOpened, countPlay, countVisit, playingAt } from './linkCount';
 import { arrive as cloudArrive, changed } from './cloud';
 import { wireCloud } from './cloudUi';
 import { Sound } from './sound';
@@ -524,6 +524,7 @@ function runEnded(score: number, seconds: number): void {
   const run: Score = { name: '', score, seconds, place: placeName, at: Date.now(), jobs: game?.run.of ?? RUN_JOBS };
   freshCourse = game ? { start: game.course.start, legs: [...game.course.legs] } : null;
   addScore(run);
+  if (!BAKED) countPlay('run');
   showBoard(run);
   // a home for the cash just made, near where the run ended
   homes?.offer($('result-home'));
@@ -923,6 +924,7 @@ const fromLink = parseLatLon(linked);
 const code = BAKED ? null : new URLSearchParams(location.search).get('c');
 const sentRun = code ? readChallenge(code) : null;
 if (!BAKED) cameByVideo(new URLSearchParams(location.search));
+if (!BAKED) countVisit(new URLSearchParams(location.search));
 if (sentRun) countOpened(sentRun.course.start);
 if (sentRun) void go(sentRun.course.start, sentRun.place || undefined, sentRun);
 else if (fromLink) void go(fromLink);

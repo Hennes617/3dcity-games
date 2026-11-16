@@ -78,8 +78,13 @@ the streets, buildings, water and hills come from the same map squares as
   no server keeps runs; it also means the score in a link is only as honest as its sender. The game
   counts challenge links made and opened, and visitors who arrive by the link under a video
   (`?ref=youtube`), each with the region of the map being played (a square of one degree, about
-  100 km), and nothing else: nothing about the player, the friend or where they are
-  (`src/linkCount.ts`). Saving
+  100 km). It also counts how it is played, per day: a visit, once a day for each browser and only once
+  the page is touched, as "new" (first time) or "back", with where it came from in one word (direct,
+  youtube, search, challenge, link); a run of three finished; a home bought; rent collected on a return.
+  Each count is a word and a number for the day, and nothing else: nothing about the player, the friend
+  or where they are. Whether a browser was here before is a date kept in it (`3da-visit-day`) that is never
+  sent. Test browsers and the developer's own machine are not counted (`src/linkCount.ts`,
+  `docs/supabase/play_counts.sql`). Saving
   online is a trial for now, with `?try=saving` in the address (remembered until `?try=nosaving`);
   without it nothing of it is shown or contacted. With it, saving is optional: a player who enters a name on the start screen has their name and game kept on
   a server, to go on with it on another device, and can delete it there again; without a name nothing

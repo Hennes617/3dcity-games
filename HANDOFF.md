@@ -158,6 +158,15 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   run in the cloud session (`VITE_TESTING=rich npx vite build --outDir <somewhere>`, then `vite preview` on a
   port reported to the app), starting with $1,000,000 on every load; the owner stopped it on 16 November
   before trying it. If the app shows no preview, offer a hidden test folder on mindmacher.com instead.
+- **Counting play in Supabase, not GoatCounter (owner, 16 November 2026).** Asked what GoatCounter changes
+  for privacy, the owner set one rule: no tick box, no banner; someone who opens an invite lands straight in
+  the game. Both options passed that; the owner chose Supabase only, because it can count game events as
+  well as visits. Table `play_counts` (day, kind, detail, n), written only by `count_play()`
+  (`docs/supabase/play_counts.sql`): `new`/`back` visits once a day per browser with a one-word source,
+  `run`, `home` (flat/house/building), `rent`. The owner reads it in the SQL Editor:
+  `select day, kind, detail, n from play_counts order by day desc, kind, detail;`. The table is live in the
+  project; the game code that writes to it is on branch `claude/homes`, not deployed. Three test rows of
+  16 November (two `new`/`other`, one `home`/`flat`) were left in it: deleting them asks the owner first.
 - **Planned: move the game's home to https://mindmacher.com/3da/ (owner, 16 November 2026), then SEO.**
   Today that address is only a forwarder to github.io, tagged `?ref=youtube`, with `noindex`
   (`docs/mindmacher/3da/index.html`; the site is Hostinger shared hosting). Checked: the build uses a

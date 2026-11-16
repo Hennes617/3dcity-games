@@ -8,6 +8,7 @@ import type { Game } from './game/game';
 import type { World } from './game/world';
 import { dayOf, homeAt, loadHomes, rentDue, rentFor, rentPerVisit, saveHomes, type Home, type Homes, type Lot } from './game/homes';
 import { pointInRing } from './geo/polygon';
+import { countPlay } from './linkCount';
 
 const money = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
 /** how near a building one has to stop for its panel (m) */
@@ -140,6 +141,7 @@ export class HomesUi {
     // at the most cash one can hold, the rent is not added
     const got = this.host.game.cash - before;
     if (got < 1) return 0;
+    if (arriving) countPlay('rent');
     const homes = this.homes.homes.length === 1 ? 'your home' : `your ${this.homes.homes.length} homes`;
     this.host.toast(arriving ? `Welcome back. Today ${homes} paid you ${money(got)} rent.` : `A new day: ${homes} paid you ${money(got)} rent.`, 'good', 9000);
     return got;
@@ -167,6 +169,7 @@ export class HomesUi {
     }
     saveHomes(this.homes);
     this.host.save();
+    countPlay('home', what);
     const mine = this.homeOf(lot)!;
     this.host.toast(`It's yours: ${describe(lot, what)}. It pays ${money(mine.rent)} rent each day you come back.`, 'good', 6000);
     this.near = null;
