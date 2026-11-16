@@ -6,6 +6,8 @@
 import { Game, RUN_JOBS, type Course, type Hud } from './game/game';
 import { linkHome, packChallenge, readChallenge, type Challenge } from './challenge';
 import { cameByVideo, countMade, countOpened, playingAt } from './linkCount';
+import { battleInLink, battleLink, hostBattle, joinBattle, type Battle } from './battleNet';
+import { runBattle, type BattleRun, type BattleView } from './battle';
 import { arrive as cloudArrive, changed } from './cloud';
 import { wireCloud } from './cloudUi';
 import { Sound } from './sound';
@@ -65,22 +67,24 @@ let mapOpen = false;
 let paused = false;
 const MODE = '3da-mode';
 /** what the start screen is set to: a run of three to compare, or open jobs */
-let mode: 'run' | 'jobs' = ((): 'run' | 'jobs' => {
+let mode: 'run' | 'jobs' | 'battle' = ((): 'run' | 'jobs' => {
   try {
     return localStorage.getItem(MODE) === 'jobs' ? 'jobs' : 'run';
   } catch {
     return 'run';
   }
 })();
-function setMode(m: 'run' | 'jobs'): void {
+function setMode(m: 'run' | 'jobs' | 'battle'): void {
   mode = m;
   try {
-    localStorage.setItem(MODE, m);
+    // a battle is chosen each time: a plain link on a later visit must not start one
+    if (m !== 'battle') localStorage.setItem(MODE, m);
   } catch {
     /* it lasts as long as the page */
   }
   $('mode-run').setAttribute('aria-pressed', String(m === 'run'));
   $('mode-jobs').setAttribute('aria-pressed', String(m === 'jobs'));
+  $('mode-battle').setAttribute('aria-pressed', String(m === 'battle'));
 }
 const ROUTE = 'drive-it-3d-route';
 
@@ -207,9 +211,10 @@ function setScreen(screen: 'start' | 'play'): void {
   $('btn-resume').hidden = !game?.world;
 }
 
-async function go(at: LngLat, name?: string, sent: Challenge | null = null): Promise<void> {
+async function go(at: LngLat, name?: string, sent: Challenge | null = null, joining = ''): Promise<void> {
   if (busy) return;
   busy = true;
+  endBattle();
   playingAt(at);
   status.className = 'status';
   status.textContent = '';
@@ -248,9 +253,10 @@ async function go(at: LngLat, name?: string, sent: Challenge | null = null): Pro
     }
     await game.start(at);
     // a run a friend sent is a run, whatever the start screen is set to
-    if (sent || mode === 'run') game.newRun(sent?.course ?? null);
+    if (joining || (!sent && mode === 'battle')) game.openPlay();
+    else if (sent || mode === 'run') game.newRun(sent?.course ?? null);
     else game.openPlay();
-    rival = sent;
+    rival = joining ? null : sent;
     const known = name ?? nearCity(at);
     placeName = known ?? `${at.lat.toFixed(2)}, ${at.lon.toFixed(2)}`;
     placeKnown = !!known;
@@ -278,6 +284,8 @@ async function go(at: LngLat, name?: string, sent: Challenge | null = null): Pro
       return;
     }
     begin();
+    if (joining && sent) void acceptBattle(joining, sent);
+    else if (!sent && mode === 'battle') void makeBattle();
   } catch (err) {
     console.warn(err);
     status.className = 'status error';
@@ -317,11 +325,143 @@ function withoutChallenge(): string {
   return location.pathname + (text ? `?${text}` : '');
 }
 
+// ------------------------------------------------------------------ battle
+
+/** the battle being played or waited for */
+let battle: BattleRun | null = null;
+let battleLine = '';
+let battleTick: ((dt: number) => void) | null = null;
+let inviteUrl = '';
+let battleHost = false;
+
+function endBattle(): void {
+  if (!battle) return;
+  battle.stop();
+  battle = null;
+  battleLine = '';
+  inviteUrl = '';
+  if (game && battleTick) {
+    const i = game.ticks.indexOf(battleTick);
+    if (i >= 0) game.ticks.splice(i, 1);
+  }
+  battleTick = null;
+  $('invite').hidden = true;
+  $('battle-end').hidden = true;
+  if (!BAKED && new URLSearchParams(location.search).has('battle')) {
+    const q = new URLSearchParams(location.search);
+    q.delete('battle');
+    q.delete('c');
+    const text = q.toString();
+    history.replaceState(null, '', location.pathname + (text ? `?${text}` : '') + location.hash);
+  }
+}
+
+function startBattle(net: Battle, course: Course): void {
+  if (!game) return;
+  const g = game;
+  battleHost = net.me === 1;
+  const view: BattleView = {
+    status: (html) => (battleLine = html),
+    toast,
+    flash: (t) => flash(t),
+    sound: (what) => sound.play(what),
+    async toStart(along) {
+      $('invite').hidden = true;
+      inviteUrl = '';
+      setPause(false);
+      showMap(false);
+      await g.start(course.start, along);
+      g.openPlay();
+      arrived = true;
+    },
+    again() {
+      $('battle-end').hidden = true;
+      g.comeDown();
+    },
+    ended(winner, mine, theirs, why) {
+      g.overview();
+      const them = battle?.name || 'your rival';
+      $('battle-title').textContent = winner === null ? 'Battle called off' : winner === net.me ? 'You win the battle' : `${cap(them)} wins the battle`;
+      $('battle-score').textContent = `${mine} : ${theirs}`;
+      $('battle-line').textContent = why || (battleHost ? 'Again starts three new rounds with the same packages.' : `${cap(them)} can start it again.`);
+      $('btn-battle-again').hidden = !battleHost || winner === null;
+      setTimeout(() => battle && ($('battle-end').hidden = false), 1500);
+    },
+  };
+  battle = runBattle(g, net, course, view);
+  battleTick = (dt) => battle?.tick(dt);
+  g.ticks.push(battleTick);
+}
+
+/** The player chose a battle and a place: make one there and show the invitation. */
+async function makeBattle(): Promise<void> {
+  if (!game) return;
+  const course = game.makeCourse(3);
+  if (!course.legs.length) return toast('There are too few streets here for a battle. Try another place.', 'bad');
+  const code = packChallenge({ name: lastName(), score: 0, seconds: 0, place: placeName, course });
+  try {
+    const net = await hostBattle(code, placeName, lastName());
+    inviteUrl = battleLink(linkHome(location), net, `#${course.start.lat.toFixed(5)},${course.start.lon.toFixed(5)}`);
+    startBattle(net, course);
+    $('invite-note').textContent = '';
+    $('invite-link').hidden = true;
+    $('invite').hidden = false;
+  } catch (err) {
+    console.warn(err);
+    toast('The battle could not be set up. You are playing on your own.', 'bad');
+  }
+}
+
+/** The player opened an invitation: take the other place in that battle. */
+async function acceptBattle(id: string, sent: Challenge): Promise<void> {
+  try {
+    const net = await joinBattle(id, lastName());
+    if (!net) return toast('That battle is over. You are playing on your own.', 'info', 6000);
+    startBattle(net, sent.course);
+  } catch (err) {
+    console.warn(err);
+    toast(err instanceof Error && err.message === 'full' ? 'That battle already has its two players. You are playing on your own.' : 'The battle could not be reached. You are playing on your own.', 'bad', 6000);
+  }
+}
+
+$('btn-invite').addEventListener('click', async () => {
+  const text = `Battle me in 3DA${placeName ? ` in ${placeName}` : ''}: one package, two cars.`;
+  const box = $<HTMLInputElement>('invite-link');
+  const note = $('invite-note');
+  box.value = inviteUrl;
+  try {
+    if (document.body.classList.contains('touch') && navigator.share) {
+      await navigator.share({ text, url: inviteUrl });
+      note.textContent = 'Sent. The battle starts when your friend opens it.';
+      return;
+    }
+    await navigator.clipboard.writeText(`${text} ${inviteUrl}`);
+    note.textContent = 'Link copied. The battle starts when your friend opens it.';
+  } catch {
+    box.hidden = false;
+    box.select();
+    note.textContent = 'Copy this link and send it.';
+  }
+});
+$('btn-invite-close').addEventListener('click', () => ($('invite').hidden = true));
+$('btn-battle-again').addEventListener('click', () => {
+  $('battle-end').hidden = true;
+  game?.comeDown();
+  battle?.again();
+});
+$('btn-battle-leave').addEventListener('click', () => {
+  endBattle();
+  game?.comeDown();
+  game?.openPlay();
+  toast('You are playing on your own: open jobs from the stations in town', 'info');
+});
+
 function begin(): void {
   $('thin').hidden = true;
   setScreen('play');
   if (placeKnown) arrive();
   if (rival && coached()) return;
+  if (mode === 'battle' || battle) return;
   // open jobs from the start: say where they are, once the place's name has been read
   if (game?.run.over && coached()) {
     setTimeout(() => playing && game?.run.over && openJobs(true), 3600);
@@ -606,8 +746,12 @@ function paint(h: Hud): void {
   if (h.carHp !== null) put('speed', `${Math.round(h.kmh)}<small>km/h</small>`);
   $('run').hidden = !h.run;
   if (h.run) put('run', `Run ${Math.min(h.run.n, h.run.of)}/${h.run.of} · ${fmtMoney(h.run.score)}${rival ? ` <small>to beat ${fmtMoney(rival.score)}</small>` : ''}`);
-  $('job').hidden = !h.job;
-  if (h.job) {
+  $('job').classList.toggle('battle', !!battleLine);
+  if (battleLine) {
+    $('job').hidden = false;
+    put('job', battleLine);
+  } else $('job').hidden = !h.job;
+  if (h.job && !battleLine) {
     $('job').classList.toggle('late', h.job.left < 10);
     const what = { plain: 'Delivery', supply: 'Supply run', rush: 'Rush job', clean: 'Clean run' }[h.job.kind];
     $('job').dataset.kind = h.job.kind;
@@ -751,6 +895,12 @@ function setPause(on: boolean): void {
   controls.enabled = playing && !on;
   if (!on) return;
   const jobs = !!game?.run.over;
+  $('btn-switch').hidden = !!battle && !inviteUrl;
+  if (battle) {
+    $('pause-line').textContent = 'You are in a battle. The other player drives on while you are here.';
+    $('btn-switch').textContent = 'Show the invitation';
+    return;
+  }
   $('pause-line').textContent = jobs ? 'You are doing open jobs.' : rival ? `You are on the run ${rival.name || 'someone'} sent you.` : 'You are on a run of three deliveries.';
   $('btn-switch').textContent = jobs ? 'Start a run of three' : 'Do open jobs instead';
 }
@@ -762,6 +912,11 @@ $('btn-continue').addEventListener('click', () => setPause(false));
 $('pause').addEventListener('click', (e) => e.target === e.currentTarget && setPause(false));
 $('btn-switch').addEventListener('click', () => {
   if (!game) return;
+  if (battle) {
+    setPause(false);
+    $('invite').hidden = false;
+    return;
+  }
   const toJobs = !game.run.over;
   setPause(false);
   rival = null;
@@ -793,6 +948,7 @@ document.addEventListener('visibilitychange', () => document.hidden && setPause(
 setMode(mode);
 $('mode-run').addEventListener('click', () => setMode('run'));
 $('mode-jobs').addEventListener('click', () => setMode('jobs'));
+$('mode-battle').addEventListener('click', () => setMode('battle'));
 
 const soundButton = (): void => {
   $('btn-sound').classList.toggle('off', !sound.on);
@@ -915,7 +1071,8 @@ const code = BAKED ? null : new URLSearchParams(location.search).get('c');
 const sentRun = code ? readChallenge(code) : null;
 if (!BAKED) cameByVideo(new URLSearchParams(location.search));
 if (sentRun) countOpened(sentRun.course.start);
-if (sentRun) void go(sentRun.course.start, sentRun.place || undefined, sentRun);
+const invited = BAKED ? '' : battleInLink(location.search);
+if (sentRun) void go(sentRun.course.start, sentRun.place || undefined, sentRun, invited);
 else if (fromLink) void go(fromLink);
 else if (linked) {
   $<HTMLInputElement>('q').value = linked;

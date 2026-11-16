@@ -212,6 +212,11 @@ export class Minimap {
       const [sx, sy] = pinned(view.drop[0], view.drop[1]);
       dot(sx, sy, 5.5, '#ffd400', '#2a2400');
     }
+    // the other player of a battle
+    if (view.rival) {
+      const [sx, sy] = pinned(view.rival[0], view.rival[1]);
+      dot(sx, sy, 5, '#ff7a1a', '#2a1200');
+    }
     if (view.cops.length && Math.floor(performance.now() / 300) % 2 === 0) {
       for (const [x, y] of view.cops) {
         const [sx, sy, far] = pinned(x, y);

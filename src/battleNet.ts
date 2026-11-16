@@ -60,6 +60,8 @@ export interface BattleEvents {
   go: (round: number, inMs: number) => void;
   /** a package or drop-off of a round has been reached, by this player */
   taken: (round: number, what: What, by: Player) => void;
+  /** the other player's car blew up with the package on board: it lies at a new place, to be claimed as `key` */
+  lost: (key: number, lat: number, lon: number) => void;
   /** the other player says the battle is over, with their cash */
   over: (cash: number) => void;
 }
@@ -79,6 +81,8 @@ export interface Battle {
   go(round: number, inMs?: number): void;
   /** "I am at the package" (or drop-off). Resolves to who was first; the other player is told. */
   claim(round: number, what: What): Promise<Player>;
+  /** "My car blew up with the package": where it lies now, and the number its next pickup is claimed under. */
+  lost(key: number, lat: number, lon: number): void;
   over(cash: number): void;
   leave(): void;
 }
@@ -159,6 +163,7 @@ async function connect(id: string, me: Player, course: string, place: string, to
     .on('broadcast', { event: 'hit' }, ({ payload }) => fns.hit?.(payload as Hit))
     .on('broadcast', { event: 'go' }, ({ payload }) => fns.go?.(payload.round as number, payload.inMs as number))
     .on('broadcast', { event: 'taken' }, ({ payload }) => taken(payload.round as number, payload.what as What, payload.by as Player))
+    .on('broadcast', { event: 'lost' }, ({ payload }) => fns.lost?.(payload.key as number, payload.lat as number, payload.lon as number))
     .on('broadcast', { event: 'over' }, ({ payload }) => fns.over?.(payload.cash as number))
     .on('presence', { event: 'sync' }, () => look());
 
@@ -208,6 +213,9 @@ async function connect(id: string, me: Player, course: string, place: string, to
       say('taken', { round, what, by });
       taken(round, what, by);
       return by;
+    },
+    lost(key, lat, lon) {
+      say('lost', { key, lat: +lat.toFixed(6), lon: +lon.toFixed(6) });
     },
     over(cash) {
       say('over', { cash: Math.round(cash) });

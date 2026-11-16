@@ -11,6 +11,17 @@ the streets, buildings, water and hills come from the same map squares as
 - **Two ways to play, chosen on the start screen** and remembered. *Compare with friends*: a run of three
   deliveries against the clock, to send to a friend to beat. *Do jobs*: the open jobs from the stations in
   town, as many as you like. The pause card switches between them. A run a friend sent is always a run.
+- **Battle a friend**, the third choice on the start screen: two players in the same town at the same
+  time. Pick a place and send the invitation; you can play on your own while you wait. The moment your
+  friend opens it, both are put at the start. Each round there is one package for the two of you:
+  whoever reaches it first, by car, has it, and whoever brings it to the yellow ring wins the round.
+  Two rounds win the battle. The one who has the package keeps it until their car blows up; then it
+  lies at a new place and is anyone's again. The other player's car is orange, solid like any car,
+  and shown on the little map; while they have the package the arrow leads to them. The player who
+  made the battle can start it again. While a battle lasts, where your car is in the game and the
+  name you chose go to the other player through the server's live channel, and nothing of it is kept;
+  the server keeps for a day which run it was and who was first at each package
+  (`src/battle.ts`, `src/battleNet.ts`, `docs/supabase/battles.md`).
 - The first time you play, a short tour walks you through it: get in, pick up, deliver, and what the
   police are about. It moves on as you do each thing, and can be skipped.
 - You start on foot beside a parked car. Walk up to any car and get in: parked ones are free, taking one

@@ -97,6 +97,7 @@
         <div id="modes" role="group" aria-label="What to play">
           <button type="button" id="mode-run" aria-pressed="true"><b>Compare with friends</b><span>A run of three deliveries against the clock. Send it to a friend to beat.</span></button>
           <button type="button" id="mode-jobs" aria-pressed="false"><b>Do jobs</b><span>As many as you like: supply runs, rush jobs and clean runs from the stations in town.</span></button>
+          <button type="button" id="mode-battle" aria-pressed="false"><b>Battle a friend</b><span>Two players in the same town at the same time, one package a round. Pick a place, then send the invitation.</span></button>
         </div>
         <form id="search">
           <input id="q" type="search" placeholder="City, street or lat, lon" autocomplete="off" enterkeyhint="go" />
@@ -138,6 +139,24 @@
           <button id="btn-city">Main menu</button>
         </div>
         <p class="small">P or Esc pauses and continues.</p>
+      </div>
+    </section>
+    <section id="invite" class="over" hidden>
+      <div class="card">
+        <h2>Battle a friend</h2>
+        <p class="small">Send this invitation. The battle starts the moment your friend opens it: you are both put at the start, and each round there is one package for the two of you. Whoever brings it to the yellow ring wins the round; two rounds win. The one who has the package keeps it until their car blows up.</p>
+        <div class="row"><button class="primary" id="btn-invite">Send the invitation</button><button id="btn-invite-close">Play while you wait</button></div>
+        <p class="small" id="invite-note" aria-live="polite"></p>
+        <input id="invite-link" type="text" readonly hidden aria-label="Invitation link" />
+        <p class="small">While a battle lasts, where your car is in the game and the name you chose go to the other player. None of that is kept.</p>
+      </div>
+    </section>
+    <section id="battle-end" class="over" hidden>
+      <div class="card">
+        <h2 id="battle-title"></h2>
+        <p class="score" id="battle-score"></p>
+        <p class="small" id="battle-line"></p>
+        <div class="row"><button class="primary" id="btn-battle-again">Again</button><button id="btn-battle-leave">Leave the battle</button></div>
       </div>
     </section>
     <section id="result" hidden>

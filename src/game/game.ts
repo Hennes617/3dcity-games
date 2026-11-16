@@ -103,7 +103,7 @@ export interface Hud {
   job: { left: number; metres: number; pay: number; kind: JobKind } | null;
   hint: string;
   /** where the arrow points: the drop-off, or the nearest job */
-  target: { ndcX: number; ndcY: number; metres: number; kind: 'drop' | 'job' } | null;
+  target: { ndcX: number; ndcY: number; metres: number; kind: 'drop' | 'job' | 'rival' } | null;
   delivered: number;
   /** well-known sights in the picture, to write their names over them */
   sights: Array<{ name: string; ndcX: number; ndcY: number; metres: number | null }>;
@@ -247,6 +247,17 @@ export class Game {
   onSound: (what: Sfx, strength?: number) => void = () => undefined;
   /** The last delivery of a run is in: what it scored and how long it took (s). */
   onRunEnd: (score: number, seconds: number) => void = () => undefined;
+  /** The car you sit in is wrecked and about to blow up. */
+  onWreck: () => void = () => undefined;
+  /**
+   * A battle lays the rings itself. While this is set the game hands out no packages of its own
+   * and the arrow, the maps and the route lead to the one place given: a package (`job`), a
+   * drop-off (`drop`), or the other player (`rival`, no ring on the ground).
+   */
+  private led: { kind: 'job' | 'drop' | 'rival'; m: Marker } | null = null;
+  private leading = false;
+  /** where the other player of a battle is, for the maps */
+  rivalAt: LngLat | null = null;
   /** The run being scored: deliveries done, what they earned less fines, and the time played. */
   run = { done: 0, score: 0, seconds: 0, over: false, of: RUN_JOBS };
   /** Where the run being scored has led so far, so that someone else can be sent the same run. */
@@ -258,6 +269,94 @@ export class Game {
   /** where the last job was taken, so that the next comes from somewhere else */
   private lastFrom: LngLat | null = null;
   private offerT = 0;
+
+  /** A battle takes over, or hands back, where the game leads you. Taking over ends any job. */
+  lead(on: boolean): void {
+    this.leading = on;
+    this.point(null);
+    if (!on) {
+      this.rivalAt = null;
+      return;
+    }
+    this.run = { done: 0, score: 0, seconds: 0, over: true, of: RUN_JOBS };
+    this.set = null;
+    if (this.job) this.endJob(false);
+    for (const m of this.pickups.splice(0)) this.scene.remove(m.mesh);
+  }
+
+  /** In a battle: where the arrow leads now, or nowhere. */
+  point(kind: 'job' | 'drop' | 'rival' | null, at?: LngLat): void {
+    if (this.led && kind === this.led.kind && at && kind !== 'rival') {
+      if (this.led.m.at.lat === at.lat && this.led.m.at.lon === at.lon) return;
+    }
+    if (this.led && kind === 'rival' && this.led.kind === 'rival' && at) {
+      // the other player moves: the same goal, somewhere else
+      this.led.m.at = at;
+      this.led.m.fieldIn = undefined;
+      return;
+    }
+    if (this.led) this.scene.remove(this.led.m.mesh);
+    this.led = null;
+    this.routeT = 0;
+    if (!kind || !at) return;
+    const m = this.markerAt(kind === 'drop' ? '#ffd400' : '#2bd4e0', at);
+    if (kind === 'rival') this.scene.remove(m.mesh);
+    this.led = { kind, m };
+  }
+
+  /** How far you are from where a battle leads you (m), or Infinity. */
+  ledMetres(): number {
+    if (!this.led) return Infinity;
+    const [x, y] = this.local(this.led.m);
+    const [px, py] = this.pos();
+    return Math.hypot(x - px, y - py);
+  }
+
+  /**
+   * Deliveries for a battle, made here and now: each a package and a drop-off on streets a road
+   * leads to, each package some way from the last drop-off. Fewer than asked for where the
+   * streets give no more.
+   */
+  makeCourse(n: number): Course {
+    const w = this.world;
+    const [sx, sy] = this.pos();
+    const legs: Course['legs'] = [];
+    let [x, y] = [sx, sy];
+    const spot = (fromX: number, fromY: number, minD: number, maxD: number): [number, number] | null => {
+      for (let k = 0; k < 30; k++) {
+        const p = w.roads.randomPlace('traffic', fromX, fromY, minD, maxD);
+        if (!p) continue;
+        const [qx, qy] = w.roads.point(p.line, p.s);
+        if (Math.abs(qx) > w.half - 60 || Math.abs(qy) > w.half - 60) continue;
+        const f = w.roads.field(qx, qy);
+        if (f && w.roads.route(f, sx, sy)) return [qx, qy];
+      }
+      return null;
+    };
+    for (let i = 0; i < n; i++) {
+      const a = spot(x, y, 180, 420);
+      const b = a && spot(a[0], a[1], 260, 620);
+      if (!a || !b) break;
+      legs.push({ from: w.proj.toLngLat(a[0], a[1]), to: w.proj.toLngLat(b[0], b[1]), kind: 'plain' });
+      [x, y] = b;
+    }
+    return { start: w.proj.toLngLat(sx, sy), legs };
+  }
+
+  /** A place on a street some way from a spot, that a road leads to: where a lost package lands. */
+  placeNear(at: LngLat, minD: number, maxD: number): LngLat {
+    const w = this.world;
+    const [x, y] = w.proj.toLocal(at.lon, at.lat);
+    const [px, py] = this.pos();
+    for (let k = 0; k < 30; k++) {
+      const p = w.roads.randomPlace('traffic', x, y, minD, maxD);
+      if (!p) continue;
+      const [qx, qy] = w.roads.point(p.line, p.s);
+      const f = w.roads.field(qx, qy);
+      if (f && w.roads.route(f, px, py)) return w.proj.toLngLat(qx, qy);
+    }
+    return at;
+  }
 
   /** No run: the open jobs from the start, as many as one likes. */
   openPlay(): void {
@@ -401,11 +500,12 @@ export class Game {
   // ------------------------------------------------------------------ squares
 
   /** Start in the square around a place, on foot beside a car. */
-  async start(at: LngLat): Promise<void> {
+  /** `along`: metres further down the street, so that two players do not stand in one spot. */
+  async start(at: LngLat, along = 0): Promise<void> {
     const world = await World.load(areaCentre(at), this.texturePx);
     const [x, y] = world.proj.toLocal(at.lon, at.lat);
     const spot = world.roads.nearest(x, y, 500, 'traffic') ?? world.roads.nearest(x, y, 900, 'drive');
-    const place: PathState | null = spot ? { line: spot.line, s: spot.s, dir: 1 } : world.roads.randomPlace('drive', 0, 0, 0, 2000);
+    const place: PathState | null = spot ? { line: spot.line, s: spot.s + along, dir: 1 } : world.roads.randomPlace('drive', 0, 0, 0, 2000);
     if (!place) {
       // nowhere to stand: keep whatever was loaded before
       world.dispose();
@@ -445,6 +545,7 @@ export class Game {
     for (const m of this.pickups.splice(0)) this.scene.remove(m.mesh);
     if (this.job) this.scene.remove(this.job.to.mesh);
     this.job = null;
+    if (this.led) this.led.m.fieldIn = undefined;
     this.routeLine.visible = false;
   }
 
@@ -965,7 +1066,7 @@ export class Game {
     let bd = Infinity;
     for (const c of this.cars) {
       // trams and trains stay on their rails: you can't take one
-      if (c.gone || railsOf(c.kind)) continue;
+      if (c.gone || c.ghost || railsOf(c.kind)) continue;
       const d = Math.hypot(c.x - this.me.x, c.y - this.me.y) - c.a - c.r;
       if (d < 2.2 && d < bd && c.speed < 9) {
         bd = d;
@@ -1432,6 +1533,7 @@ export class Game {
   /** The way to the drop-off, as a yellow line on the road ahead of you. */
   /** Where you're headed: the drop-off, or else the nearest package. */
   private goal(): Marker | null {
+    if (this.leading) return this.led?.m ?? null;
     if (this.job) return this.job.to;
     const [px, py] = this.pos();
     let best: Marker | null = null;
@@ -1472,7 +1574,7 @@ export class Game {
         return;
       }
       let best: Car | null = null;
-      for (const c of this.cars) if (!c.gone && c.driver === 'none' && c.hp > 40 && (!best || Math.hypot(c.x - this.me.x, c.y - this.me.y) < Math.hypot(best.x - this.me.x, best.y - this.me.y))) best = c;
+      for (const c of this.cars) if (!c.gone && !c.ghost && c.driver === 'none' && c.hp > 40 && (!best || Math.hypot(c.x - this.me.x, c.y - this.me.y) < Math.hypot(best.x - this.me.x, best.y - this.me.y))) best = c;
       if (!best) return;
       const d = Math.hypot(best.x - this.me.x, best.y - this.me.y) || 1;
       this.walk({ moveX: (best.x - this.me.x) / d, moveY: (best.y - this.me.y) / d, stick: true, throttle: 0, steer: 0, brake: false, handbrake: false }, dt);
@@ -1516,7 +1618,7 @@ export class Game {
 
   private placeMarkers(): void {
     const pulse = 1 + 0.08 * Math.sin(this.clock * 5);
-    for (const m of [...this.pickups, ...(this.job ? [this.job.to] : [])]) {
+    for (const m of [...this.pickups, ...(this.job ? [this.job.to] : []), ...(this.led && this.led.kind !== 'rival' ? [this.led.m] : [])]) {
       const [x, y] = this.local(m);
       const inside = Math.abs(x) < this.world.half && Math.abs(y) < this.world.half;
       m.mesh.visible = inside;
@@ -1632,6 +1734,7 @@ export class Game {
     } else if (this.car && this.car.hp <= 0 && live) {
       this.blown = this.car;
       this.blowT = 0.9;
+      this.onWreck();
       this.frozen = 1;
       this.car.controls.throttle = 0;
       this.car.vx *= 0.3;
@@ -1657,12 +1760,12 @@ export class Game {
     if (live) {
       this.law(dt);
       if (!this.run.over) this.run.seconds += dt;
-      this.jobs(dt);
+      if (!this.leading) this.jobs(dt);
       // a line on the road to the drop-off, or to the nearest package
       this.routeT -= dt;
       if (this.routeT <= 0) {
         this.routeT = 0.3;
-        this.drawRoute(this.goal(), this.job ? '#ffd400' : '#2bd4e0');
+        this.drawRoute(this.goal(), (this.leading ? this.led?.kind === 'drop' : this.job) ? '#ffd400' : this.led?.kind === 'rival' ? '#ff7a1a' : '#2bd4e0');
       }
     }
     this.draw(dt);
@@ -1813,15 +1916,16 @@ export class Game {
   }
 
   /** What the little map draws: you, the rings, the way there, and the police while they're after you. */
-  mapView(): { x: number; y: number; th: number; pickups: Pt[]; drop: Pt | null; cops: Pt[]; route: Pt[] | null } {
+  mapView(): { x: number; y: number; th: number; pickups: Pt[]; drop: Pt | null; cops: Pt[]; route: Pt[] | null; rival: Pt | null } {
     const [x, y] = this.pos();
     return {
       x,
       y,
       // backing up, the arrowhead shows the way you are going, not the way the bonnet points
       th: this.car ? (this.car.forward < -0.5 ? this.car.th + Math.PI : this.car.th) : this.me.th,
-      pickups: this.job ? [] : this.pickups.map((m) => this.local(m)),
-      drop: this.job ? this.local(this.job.to) : null,
+      pickups: this.led?.kind === 'job' ? [this.local(this.led.m)] : this.job ? [] : this.pickups.map((m) => this.local(m)),
+      drop: this.led?.kind === 'drop' ? this.local(this.led.m) : this.job ? this.local(this.job.to) : null,
+      rival: this.rivalAt ? this.world.proj.toLocal(this.rivalAt.lon, this.rivalAt.lat) : null,
       cops: this.heat > 0 ? this.cars.filter((c) => c.driver === 'cop' && !c.gone).map((c): Pt => [c.x, c.y]) : [],
       route: this.routePts,
     };
@@ -1831,8 +1935,13 @@ export class Game {
   hud(): Hud {
     const [px, py] = this.pos();
     let target: Hud['target'] = null;
-    let best: { x: number; y: number; d: number; kind: 'drop' | 'job' } | null = null;
-    if (this.job) {
+    let best: { x: number; y: number; d: number; kind: 'drop' | 'job' | 'rival' } | null = null;
+    if (this.leading) {
+      if (this.led) {
+        const [x, y] = this.local(this.led.m);
+        best = { x, y, d: Math.hypot(x - px, y - py), kind: this.led.kind };
+      }
+    } else if (this.job) {
       const [x, y] = this.local(this.job.to);
       best = { x, y, d: Math.hypot(x - px, y - py), kind: 'drop' };
     } else {

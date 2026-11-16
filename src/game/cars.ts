@@ -112,6 +112,8 @@ export class Car {
   vy = 0;
   hp = 100;
   driver: Driver = 'none';
+  /** the other player's car in a battle: moved by what they send, and not to be got into */
+  ghost = false;
   path: PathState | null = null;
   readonly controls: Controls = { throttle: 0, steer: 0, handbrake: false };
   readonly spec: Spec;

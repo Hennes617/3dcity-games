@@ -295,3 +295,19 @@ html body.radio-on #minimap[data-corner='tr'] { top: calc(168px + env(safe-area-
 #cloud-form input, #cloud-url { flex: 1 1 150px; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #181b20; color: var(--ink); font: inherit; font-size: 16px; }
 #cloud-url { width: 100%; box-sizing: border-box; margin-top: 6px; }
 #cloud-url[hidden] { display: none; }
+
+/* battle mode */
+#mode-battle { grid-column: 1 / -1; }
+.over { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: rgba(12, 14, 17, 0.72); }
+.over[hidden] { display: none; }
+.over .card { width: min(460px, 100%); }
+.over h2 { margin: 0 0 6px; font-size: 24px; }
+.over .score { font-size: 30px; font-weight: 800; margin: 4px 0; color: var(--yellow); }
+#invite-link { width: 100%; box-sizing: border-box; margin-top: 6px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #181b20; color: var(--ink); font: inherit; font-size: 16px; }
+#invite-link[hidden] { display: none; }
+#job.battle { border-color: rgba(255, 122, 26, 0.6); white-space: normal; max-width: min(560px, calc(100vw - 150px)); }
+#job.battle b { color: var(--ink); }
+#job.battle .job { position: static; transform: none; color: var(--cyan); font-weight: 700; }
+#job.battle .drop { color: var(--yellow); font-weight: 700; }
+#job.battle .rival { color: #ff7a1a; font-weight: 700; }
+#arrow.rival path { fill: #ff7a1a; stroke: #2a1200; }
