@@ -74,6 +74,9 @@ Object.assign(PALETTE, {
 
 
 /** Towers are squashed so the camera can stay close above the streets. */
+/** Whether subway entrances are in the game: off for now. */
+export const SUBWAY = false;
+
 export function gameHeight(h: number): number {
   return h <= 18 ? h : 18 + (h - 18) * 0.3;
 }
@@ -369,6 +372,9 @@ export class World {
     // subway entrances that would stand on top of each other count as one
     const stops: Stop[] = [];
     for (const st of readStops(tiles, makeProjector(centre), AREA_SIZE_M / 2 - 8)) {
+      // the subway is off for now (owner, 16 November 2026): the ride did not start from the touch
+      // button. Without entrances there are no signs, no hint and no rides; set SUBWAY to bring it back.
+      if (st.kind === 'subway' && !SUBWAY) continue;
       if (st.kind === 'subway' && stops.some((o) => o.kind === 'subway' && Math.hypot(o.x - st.x, o.y - st.y) < 14)) continue;
       stops.push(st);
     }
