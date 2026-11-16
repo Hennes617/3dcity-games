@@ -149,6 +149,10 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   `claude/homes`, not yet shown to the owner or deployed. Checked in Nuremberg, Manhattan, Berlin and two
   Black Forest / Franconian places: cheapest flat $640–700 everywhere, 40–60 ms to price an area.
   The owner then set a ceiling on cash: $1,000,000 for now (`MAX_CASH`), so rent can't pile up without end.
+  **Next time the owner is back: ask whether to start the test build again** so they can try homes. It was
+  run in the cloud session (`VITE_TESTING=rich npx vite build --outDir <somewhere>`, then `vite preview` on a
+  port reported to the app), starting with $1,000,000 on every load; the owner stopped it on 16 November
+  before trying it. If the app shows no preview, offer a hidden test folder on mindmacher.com instead.
 - **Planned: move the game's home to https://mindmacher.com/3da/ (owner, 16 November 2026), then SEO.**
   Today that address is only a forwarder to github.io, tagged `?ref=youtube`, with `noindex`
   (`docs/mindmacher/3da/index.html`; the site is Hostinger shared hosting). Checked: the build uses a
