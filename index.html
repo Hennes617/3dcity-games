@@ -149,7 +149,14 @@
         <p class="score" id="guess-score"></p>
         <p class="small" id="guess-line"></p>
         <div id="guess-options"></div>
-        <div class="row" id="guess-after" hidden><button class="primary" id="btn-guess-next">Next city</button><button id="btn-guess-stay">Keep driving here</button></div>
+        <div id="guess-after" hidden>
+          <p class="small" id="guess-rival" hidden></p>
+          <input id="guess-name" type="text" maxlength="16" placeholder="Your name (optional)" autocomplete="off" enterkeyhint="done" />
+          <button class="primary" id="btn-guess-send">Send it to a friend to guess</button>
+          <p class="small" id="guess-note"></p>
+          <input id="guess-link" type="text" readonly hidden aria-label="Link to this city" />
+          <div class="row"><button id="btn-guess-next">Next city</button><button id="btn-guess-stay">Keep driving here</button></div>
+        </div>
         <div class="row" id="guess-before"><button id="btn-guess-back">Look around some more</button></div>
         <p class="small" id="guess-tally"></p>
       </div>
