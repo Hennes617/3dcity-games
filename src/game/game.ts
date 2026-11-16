@@ -113,6 +113,8 @@ export interface Hud {
 
 /** A run is this many deliveries; each asks a little more than the one before. A run someone sent keeps its own number. */
 export const RUN_JOBS = 3;
+/** The most cash a player can hold, for now: above it, pay and rent are not added. */
+export const MAX_CASH = 1_000_000;
 /** Per delivery of a run: how far the drop-off is (m, from, to) and the speed the clock assumes (m/s). */
 const RUN_STEPS: Array<[number, number, number]> = [
   [250, 550, 7],
@@ -174,7 +176,16 @@ export class Game {
   readonly me = { x: 0, y: 0, th: 0, vx: 0, vy: 0, hp: 100, mesh: personMesh('#ffd400', true) };
   /** the car you are driving, or null on foot */
   car: Car | null = null;
-  cash = 0;
+  private money = 0;
+  /** Cash, never more than `MAX_CASH`: whatever adds to it (pay, rent, an add-on, a loaded save) stops there. */
+  get cash(): number {
+    return this.money;
+  }
+  set cash(v: number) {
+    const was = this.money;
+    this.money = Math.min(MAX_CASH, Math.max(0, Number.isFinite(v) ? v : 0));
+    if (this.money === MAX_CASH && was < MAX_CASH && was > 0) this.onToast('$1,000,000: the most cash you can hold for now. Spend some on homes.', 'good');
+  }
   delivered = 0;
   heat = 0;
   job: Job | null = null;

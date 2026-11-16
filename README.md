@@ -43,6 +43,8 @@ the streets, buildings, water and hills come from the same map squares as
   place has hardly any blocks of flats, its bigger houses hold flats. Owned buildings carry a yellow house on
   the roof and on both maps. Each player owns their own copy of the city. What you own is kept in the browser
   (`3da-homes`) beside your cash, so online saving carries it along (`src/game/homes.ts`, `src/homesUi.ts`).
+- **Cash stops at $1,000,000** for now (`MAX_CASH` in `game.ts`): above it, pay and rent are not added, and
+  the game says so once.
 - **A place opens seen from above:** about a kilometre of it for a second, then the view comes down to you
   in three and a half seconds, so you see where in the town you are. You can move straight away. When a run ends
   the view rises again behind the result, and comes back down when you drive on.

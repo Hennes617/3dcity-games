@@ -141,8 +141,12 @@ export class HomesUi {
     if (due.cash < 1) return 0;
     this.homes.paidUntil = Date.now();
     saveHomes(this.homes);
+    const before = this.host.game.cash;
     this.host.game.cash += due.cash;
     this.host.save();
+    // at the most cash one can hold, the rent is not added
+    due.cash = this.host.game.cash - before;
+    if (due.cash < 1) return 0;
     const homes = this.homes.homes.length === 1 ? 'your home' : `your ${this.homes.homes.length} homes`;
     if (arriving && due.hours >= 23.9) this.host.toast(`Welcome back. While you were away, ${homes} earned ${money(due.cash)}: a full day's rent, the most that waits for you.`, 'good', 9000);
     else if (arriving && due.hours >= 0.25) {
