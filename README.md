@@ -11,6 +11,11 @@ the streets, buildings, water and hills come from the same map squares as
 - **Two ways to play, chosen on the start screen** and remembered. *Compare with friends*: a run of three
   deliveries against the clock, to send to a friend to beat. *Do jobs*: the open jobs from the stations in
   town, as many as you like. The pause card switches between them. A run a friend sent is always a run.
+- **Where am I?**, the fourth choice: you are put down in one of about sixty well-known cities without
+  being told which. Drive around, then pick the city from four names (two of the wrong ones are cities
+  nearby). A pick at once is worth 1,000 points, each second of looking costs 4, a wrong pick 250 and
+  that name. Until the pick, the city's name, the names of its sights and the address in the link are
+  kept back; street names on the big map stay, as a clue (`src/guess.ts`).
 - The first time you play, a short tour walks you through it: get in, pick up, deliver, and what the
   police are about. It moves on as you do each thing, and can be skipped.
 - You start on foot beside a parked car. Walk up to any car and get in: parked ones are free, taking one

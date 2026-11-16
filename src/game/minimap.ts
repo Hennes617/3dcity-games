@@ -22,6 +22,8 @@ export class Minimap {
   private readonly ctx: CanvasRenderingContext2D;
   private base: HTMLCanvasElement | null = null;
   private baseOf: World | null = null;
+  /** the place is being guessed: sights keep their star and lose their name */
+  secret = false;
 
   /** `whole`: show the whole loaded square instead of the streets around you. */
   constructor(private readonly canvas: HTMLCanvasElement, private readonly whole = false) {
@@ -191,7 +193,7 @@ export class Minimap {
       ctx.lineWidth = 1.2 * dpr;
       ctx.strokeStyle = '#2a2400';
       ctx.stroke();
-      if (this.whole) {
+      if (this.whole && !this.secret) {
         ctx.font = `600 ${12 * dpr}px system-ui, sans-serif`;
         ctx.textBaseline = 'middle';
         const left = sx > W * 0.7;
