@@ -31,9 +31,9 @@ the streets, buildings, water and hills come from the same map squares as
 - **Three deliveries make a run.** Each drop-off is a little farther and the clock a little tighter than
   the one before. What the three earn, less any fines, is the score; it goes on a scoreboard, with your
   name if you care to write one. The board is kept in the browser, so it is the board of one device.
-- **Homes.** Cash buys flats and houses, and each pays rent by the real hour, also while the game is closed,
-  up to one day's worth: that waits for you on the next visit ("Welcome back…"). While playing, rent comes in
-  every ten minutes. Right after a run of three, the result card offers the dearest flat or house near where
+- **Homes.** Cash buys flats and houses. Each pays rent once for every day you come back: on the first visit
+  of a calendar day you get a day's rent ("Welcome back. Today your homes paid you…"), the same however long
+  you were away, about a quarter of what the home cost. Nothing comes in while playing. Right after a run of three, the result card offers the dearest flat or house near where
   it ended that the cash will buy, and a bigger one to save up for. Stop beside any building to see its price:
   a block of three floors or more is split into flats (one flat, or the whole building); a smaller building
   is a house. Sheds, big low halls, towers and anything at a sight, school, place of worship or marked
@@ -44,7 +44,7 @@ the streets, buildings, water and hills come from the same map squares as
   the roof and on both maps. Each player owns their own copy of the city. What you own is kept in the browser
   (`3da-homes`) beside your cash, so online saving carries it along (`src/game/homes.ts`, `src/homesUi.ts`).
 - **Cash stops at $1,000,000** for now (`MAX_CASH` in `game.ts`): above it, pay and rent are not added, and
-  the game says so once.
+  the game says so once. Open jobs pay more with each delivery made, up to the 50th; after that they no longer grow.
 - **A place opens seen from above:** about a kilometre of it for a second, then the view comes down to you
   in three and a half seconds, so you see where in the town you are. You can move straight away. When a run ends
   the view rises again behind the result, and comes back down when you drive on.

@@ -6,7 +6,7 @@
 
 import type { Game } from './game/game';
 import type { World } from './game/world';
-import { homeAt, loadHomes, rentDue, rentFor, rentPerHour, saveHomes, type Home, type Homes, type Lot } from './game/homes';
+import { dayOf, homeAt, loadHomes, rentDue, rentFor, rentPerVisit, saveHomes, type Home, type Homes, type Lot } from './game/homes';
 import { pointInRing } from './geo/polygon';
 
 const money = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
@@ -88,7 +88,6 @@ export class HomesUi {
   private marks = new Map<Lot, { remove: () => void }>();
   private near: Lot | null = null;
   private lookT = 0;
-  private rentT = 0;
   private welcomed = false;
   private readonly panel = document.getElementById('forsale')!;
 
@@ -114,12 +113,6 @@ export class HomesUi {
       this.welcomed = true;
       this.payRent(true);
     }
-    // while playing, the rent comes in every ten minutes
-    this.rentT += dt;
-    if (this.rentT > 600) {
-      this.rentT = 0;
-      this.payRent(false, false);
-    }
     this.lookT -= dt;
     if (this.lookT > 0) return;
     this.lookT = 0.25;
@@ -134,26 +127,22 @@ export class HomesUi {
     for (const lot of world.lots) if (this.homeOf(lot)) this.marks.set(lot, world.mark(icon(), lot.x, lot.y));
   }
 
-  /** Pay out the rent that has come in. On arrival, say so where it was a while. */
-  payRent(arriving = false, quiet = true): number {
+  /** Pay the rent of a new day, once. On arrival, say so. */
+  payRent(arriving = false): number {
     if (!this.homes.homes.length) return 0;
     const due = rentDue(this.homes, Date.now());
-    if (due.cash < 1) return 0;
-    this.homes.paidUntil = Date.now();
+    if (due < 1) return 0;
+    this.homes.paidDay = dayOf(Date.now());
     saveHomes(this.homes);
     const before = this.host.game.cash;
-    this.host.game.cash += due.cash;
+    this.host.game.cash += due;
     this.host.save();
     // at the most cash one can hold, the rent is not added
-    due.cash = this.host.game.cash - before;
-    if (due.cash < 1) return 0;
+    const got = this.host.game.cash - before;
+    if (got < 1) return 0;
     const homes = this.homes.homes.length === 1 ? 'your home' : `your ${this.homes.homes.length} homes`;
-    if (arriving && due.hours >= 23.9) this.host.toast(`Welcome back. While you were away, ${homes} earned ${money(due.cash)}: a full day's rent, the most that waits for you.`, 'good', 9000);
-    else if (arriving && due.hours >= 0.25) {
-      const away = due.hours >= 1.5 ? `${Math.round(due.hours)} hours` : `${Math.max(1, Math.round(due.hours * 60))} minutes`;
-      this.host.toast(`Welcome back. In ${away} away, ${homes} earned ${money(due.cash)}.`, 'good', 9000);
-    } else if (!arriving && quiet === false) this.host.toast(`Rent from ${homes}  +${money(due.cash)}`, 'good');
-    return due.cash;
+    this.host.toast(arriving ? `Welcome back. Today ${homes} paid you ${money(got)} rent.` : `A new day: ${homes} paid you ${money(got)} rent.`, 'good', 9000);
+    return got;
   }
 
   /** Buy a lot of the square being played. */
@@ -164,7 +153,8 @@ export class HomesUi {
     if (game.cash < price || (had && what !== 'building') || had?.kind === 'building') return false;
     // the rent so far goes out first, so the new home's rent starts now
     this.payRent();
-    if (!this.homes.homes.length) this.homes.paidUntil = Date.now();
+    // a first home starts paying tomorrow
+    if (!this.homes.homes.length) this.homes.paidDay = dayOf(Date.now());
     game.cash -= price;
     const ll = this.world!.proj.toLngLat(lot.x, lot.y);
     if (had) {
@@ -178,7 +168,7 @@ export class HomesUi {
     saveHomes(this.homes);
     this.host.save();
     const mine = this.homeOf(lot)!;
-    this.host.toast(`It's yours: ${describe(lot, what)}. It earns ${money(mine.rent)} an hour, also while the game is closed.`, 'good', 6000);
+    this.host.toast(`It's yours: ${describe(lot, what)}. It pays ${money(mine.rent)} rent each day you come back.`, 'good', 6000);
     this.near = null;
     this.look();
     return true;
@@ -224,17 +214,17 @@ export class HomesUi {
     if (had) {
       title.textContent = had.kind === 'building' ? 'Your building' : had.kind === 'house' ? 'Your house' : 'Your flat';
       this.panel.append(title);
-      line(`Earns ${money(had.rent)} an hour${on(found.street)}.`);
+      line(`Pays ${money(had.rent)} rent each day you come back.`);
       if (had.kind === 'flat') button('Buy the rest of the building', found.whole - had.paid, 'building');
       return;
     }
     title.textContent = 'For sale';
     this.panel.append(title);
     if (found.kind === 'house') {
-      line(`A house${on(found.street)}. Earns ${money(rentFor(found.price))} an hour.`);
+      line(`A house${on(found.street)}. Pays ${money(rentFor(found.price))} rent each day you come back.`);
       button('Buy the house', found.price, 'house');
     } else {
-      line(`Flats in ${floorsA(found.floors)} ${found.inHouse ? 'house' : 'building'}${on(found.street)}. One earns ${money(rentFor(found.price))} an hour.`);
+      line(`Flats in ${floorsA(found.floors)} ${found.inHouse ? 'house' : 'building'}${on(found.street)}. One pays ${money(rentFor(found.price))} rent each day you come back.`);
       button('Buy a flat', found.price, 'flat');
       button(`Buy all ${found.units}`, found.whole, 'building');
     }
@@ -265,7 +255,7 @@ export class HomesUi {
       return el;
     };
     const owned = this.homes.homes.length;
-    if (owned) p(`Your ${owned === 1 ? 'home earns' : `${owned} homes earn`} ${money(rentPerHour(this.homes))} an hour${rent ? `. Paid out now: ${money(rent)}` : ''}.`, 'small');
+    if (owned) p(`Your ${owned === 1 ? 'home pays' : `${owned} homes pay`} ${money(rentPerVisit(this.homes))} rent each day you come back${rent ? `. Paid today: ${money(rent)}` : ''}.`, 'small');
     if (!free.length) {
       box.hidden = !owned;
       return;
@@ -278,7 +268,7 @@ export class HomesUi {
       const head = document.createElement('b');
       head.textContent = `For sale near here: ${describe(pick, what(pick))}`;
       box.append(head);
-      p(`${money(pick.price)}. You have ${money(cash)}. It earns ${money(rentFor(pick.price))} an hour, also while the game is closed.`);
+      p(`${money(pick.price)}. You have ${money(cash)}. It pays ${money(rentFor(pick.price))} rent each day you come back.`);
       const b = document.createElement('button');
       b.className = 'buy';
       b.textContent = `Buy it for ${money(pick.price)}`;

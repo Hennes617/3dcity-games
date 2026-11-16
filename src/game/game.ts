@@ -115,6 +115,8 @@ export interface Hud {
 export const RUN_JOBS = 3;
 /** The most cash a player can hold, for now: above it, pay and rent are not added. */
 export const MAX_CASH = 1_000_000;
+/** open jobs pay more with each delivery made, up to this many */
+const OPEN_JOBS_GROW = 50;
 /** Per delivery of a run: how far the drop-off is (m, from, to) and the speed the clock assumes (m/s). */
 const RUN_STEPS: Array<[number, number, number]> = [
   [250, 550, 7],
@@ -1351,7 +1353,8 @@ export class Game {
           } else this.scene.remove(cand.mesh);
         }
         if (!marker) continue;
-        const base = Math.max(50, Math.round((metres * (0.5 + (this.run.over ? this.delivered : this.run.done) * 0.03)) / 10) * 10);
+        // open jobs pay more the more one has delivered, up to the 50th delivery: after that it no longer grows
+        const base = Math.max(50, Math.round((metres * (0.5 + (this.run.over ? Math.min(this.delivered, OPEN_JOBS_GROW) : this.run.done) * 0.03)) / 10) * 10);
         // each kind of job has its own clock and its own pay
         const [clock, pay, say] = {
           plain: [25 + metres / pace, base, 'Package on board: get it to the yellow ring'],

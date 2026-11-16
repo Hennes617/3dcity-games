@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findLots, homeAt, lotKind, readHomes, rentDue, rentFor, roundPrice, RENT_CAP_MS, type LotBuilding } from '../src/game/homes';
+import { dayOf, findLots, homeAt, lotKind, readHomes, rentDue, rentFor, roundPrice, type LotBuilding } from '../src/game/homes';
 
 const box = (x: number, y: number, w: number, h: number, height: number, id: string): LotBuilding => ({
   poly: { outer: [[x, y], [x + w, y], [x + w, y + h], [x, y + h]], holes: [] },
@@ -41,15 +41,23 @@ describe('homes', () => {
     expect(roundPrice(18420)).toBe(18000);
   });
 
-  it('lets rent wait one day at most', () => {
-    const h = readHomes(JSON.stringify({ v: 1, homes: [{ id: '1', lat: 0, lon: 0, kind: 'flat', paid: 800, rent: rentFor(800), street: '', place: '', at: 0 }], paidUntil: 0 }));
-    expect(rentFor(800)).toBe(28);
-    expect(rentDue(h, 3600 * 1000).cash).toBe(28);
-    expect(rentDue(h, 5 * RENT_CAP_MS).cash).toBe(28 * 24);
+  it('pays rent once for each day one comes back, however long one was away', () => {
+    const monday = new Date(2026, 10, 16, 9).getTime();
+    const h = readHomes(JSON.stringify({ v: 1, homes: [{ id: '1', lat: 0, lon: 0, kind: 'flat', paid: 700, rent: 0, street: '', place: '', at: 0 }], paidDay: dayOf(monday) }));
+    expect(rentFor(700)).toBe(168);
+    expect(h.homes[0].rent).toBe(168); // from the price, whatever was kept
+    expect(rentDue(h, monday + 6 * 3600 * 1000)).toBe(0); // the same day
+    expect(rentDue(h, new Date(2026, 10, 17, 0, 5).getTime())).toBe(168); // just after midnight
+    expect(rentDue(h, new Date(2026, 10, 30).getTime())).toBe(168); // two weeks away: still one day
+  });
+
+  it('reads what an earlier version kept', () => {
+    const h = readHomes(JSON.stringify({ v: 1, homes: [], paidUntil: new Date(2026, 10, 16, 12).getTime() }));
+    expect(h.paidDay).toBe('2026-11-16');
   });
 
   it('finds a home by the map number, or where it stood when the map has redrawn it', () => {
-    const h = readHomes(JSON.stringify({ v: 1, homes: [{ id: '7', lat: 49.45, lon: 11.07, kind: 'house', paid: 1, rent: 1, street: '', place: '', at: 0 }], paidUntil: 0 }));
+    const h = readHomes(JSON.stringify({ v: 1, homes: [{ id: '7', lat: 49.45, lon: 11.07, kind: 'house', paid: 1, rent: 1, street: '', place: '', at: 0 }], paidDay: '2026-11-16' }));
     expect(homeAt(h, { id: '7' }, 0, 0)).toBeTruthy();
     expect(homeAt(h, { id: '8' }, 49.45001, 11.07)).toBeTruthy(); // 1 m away
     expect(homeAt(h, { id: '8' }, 49.4502, 11.07)).toBeUndefined(); // 22 m away

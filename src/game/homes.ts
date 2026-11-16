@@ -1,6 +1,7 @@
 /**
- * Homes: flats and houses the player can buy with the cash from deliveries. They pay rent by the
- * real hour, also while the game is closed, up to one day's worth; that is waiting on the next visit.
+ * Homes: flats and houses the player can buy with the cash from deliveries. They pay rent once for
+ * each day the player comes back: on the first visit of a calendar day, the same however long they
+ * were away. Nothing comes in while playing, and a day missed is not made up.
  *
  * Each player owns their own copy of the city: two players can own the same flat. What is owned is
  * kept in the browser under `3da-homes`, beside the cash, so saving online carries it along.
@@ -24,10 +25,8 @@ import type { AreaFeature, LineFeature } from '../geo/osm';
 /** what one flat of 70 m² costs where the spot is average */
 const FLAT_BASE = 900;
 const FLAT_M2 = 70;
-/** rent per real hour, as a share of what was paid */
-export const RENT_PER_HOUR = 0.035;
-/** rent waits at most this long (ms): coming back after a week pays one day */
-export const RENT_CAP_MS = 24 * 3600 * 1000;
+/** rent for each day one comes back, as a share of what was paid: a home pays for itself in about four visits */
+export const RENT_PER_VISIT = 0.24;
 const STORE = '3da-homes';
 
 export type LotKind = 'flats' | 'house';
@@ -332,18 +331,29 @@ export interface Home {
 export interface Homes {
   v: 1;
   homes: Home[];
-  /** when rent was last paid out (ms) */
-  paidUntil: number;
+  /** the calendar day (on this device, YYYY-MM-DD) rent was last paid for */
+  paidDay: string;
 }
 
-export function readHomes(raw: string | null): Homes {
+/** A calendar day on this device, as YYYY-MM-DD: rent is paid once for each. */
+export function dayOf(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export function readHomes(raw: string | null, now = Date.now()): Homes {
   try {
-    const h = JSON.parse(raw ?? '') as Homes;
-    if (h && h.v === 1 && Array.isArray(h.homes)) return { v: 1, homes: h.homes, paidUntil: Number.isFinite(h.paidUntil) ? h.paidUntil : Date.now() };
+    const h = JSON.parse(raw ?? '') as Homes & { paidUntil?: number };
+    if (h && h.v === 1 && Array.isArray(h.homes)) {
+      // the rent follows the price paid, whatever an older version kept
+      const homes = h.homes.map((x) => ({ ...x, rent: rentFor(x.paid) }));
+      const paidDay = typeof h.paidDay === 'string' ? h.paidDay : dayOf(Number.isFinite(h.paidUntil) ? h.paidUntil! : now);
+      return { v: 1, homes, paidDay };
+    }
   } catch {
     /* none yet */
   }
-  return { v: 1, homes: [], paidUntil: Date.now() };
+  return { v: 1, homes: [], paidDay: dayOf(now) };
 }
 
 export function loadHomes(): Homes {
@@ -362,20 +372,19 @@ export function saveHomes(h: Homes): void {
   }
 }
 
-export function rentPerHour(h: Homes): number {
+/** What all one's homes pay on a day one comes back. */
+export function rentPerVisit(h: Homes): number {
   return h.homes.reduce((s, x) => s + x.rent, 0);
 }
 
-/** The rent due now, and the time it is paid up to. Waits at most a day. */
-export function rentDue(h: Homes, now: number): { cash: number; hours: number } {
-  const ms = Math.max(0, Math.min(now - h.paidUntil, RENT_CAP_MS));
-  const hours = ms / 3600000;
-  return { cash: Math.floor(rentPerHour(h) * hours), hours };
+/** The rent due now: all of it on the first visit of a new day, nothing on a second visit that day. */
+export function rentDue(h: Homes, now: number): number {
+  return dayOf(now) === h.paidDay ? 0 : rentPerVisit(h);
 }
 
-/** Rent from the price paid: about one run's pay for a cheap flat left a day. */
+/** Rent for a day one comes back, from the price paid: $168 for a $700 flat. */
 export function rentFor(paid: number): number {
-  return Math.max(1, Math.round(paid * RENT_PER_HOUR));
+  return Math.max(1, Math.round(paid * RENT_PER_VISIT));
 }
 
 /** The home kept for this building, if any: by the map's number, or failing that by where it stands. */

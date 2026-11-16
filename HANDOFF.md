@@ -145,10 +145,15 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   after the run of three, with an affordable flat near the end "but just enough", and bigger houses shown at
   higher prices. Prices from the map alone for now (works in every village); real rent or land-value data,
   where a city publishes it, is a later step and is to touch prices only. Numbers to tune after the owner
-  plays: `FLAT_BASE` 900, rent 3.5 % of the price an hour, one day's rent at most waiting. Built on branch
+  plays: `FLAT_BASE` 900 and the rent (see below). Built on branch
   `claude/homes`, not yet shown to the owner or deployed. Checked in Nuremberg, Manhattan, Berlin and two
   Black Forest / Franconian places: cheapest flat $640–700 everywhere, 40–60 ms to price an area.
   The owner then set a ceiling on cash: $1,000,000 for now (`MAX_CASH`), so rent can't pile up without end.
+  Then the numbers were checked: rent of 3.5 % an hour made money nearly double each day (the ceiling in 12
+  daily visits), and open jobs paid more with every delivery ever made, without end ($18,000 a job after
+  1,000). The owner chose rent "only paid per visit": once per calendar day on the device, 24 % of the price
+  (`RENT_PER_VISIT`), none while playing, a missed day not made up; about 36 visit days from one run to the
+  ceiling by rent alone. Open-jobs pay now stops growing at the 50th delivery (`OPEN_JOBS_GROW`).
   **Next time the owner is back: ask whether to start the test build again** so they can try homes. It was
   run in the cloud session (`VITE_TESTING=rich npx vite build --outDir <somewhere>`, then `vite preview` on a
   port reported to the app), starting with $1,000,000 on every load; the owner stopped it on 16 November
