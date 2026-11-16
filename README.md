@@ -86,7 +86,7 @@ the streets, buildings, water and hills come from the same map squares as
   short tap still opens the big map. **The big map names the main streets** (the bigger streets and
   avenues, written along them); the street view and the little map stay without names.
 - **The little map** in the corner shows the streets around you, north up, with the way to the next ring
-  drawn in, the rings, and the police while they're after you. Tap it, or press `M`, for
+  drawn in, the rings, the subway entrances, and the police while they're after you. Tap it, or press `M`, for
   a big map of all the loaded streets (1.5 km across); the game waits while it is open. Press `G`, or the
   button on the big map, to also draw the way as a line on the road; the game remembers the choice.
 - Cars dent: below a third they smoke and slow down. At zero the car you sit in blows up, and you start
@@ -97,10 +97,10 @@ the streets, buildings, water and hills come from the same map squares as
   both wait at the real stops. A bus stop is a small shelter with a sign on a post, a tram stop a platform
   beside the track. The sign is the same everywhere for now: a white bus on a blue disc, a white tram on a red one;
   no operator's own symbol is drawn (`src/game/stopShapes.ts`). Trains run on the railway tracks and
-  brake for nothing but another train: keep off the track. At the end of a track a train or tram waits a moment and goes back the way it came. Trains have no stations yet. You can take a bus; trams stay on their rails. **The subway is switched off for now**
-  (`SUBWAY` in `src/game/world.ts`): taking it from the touch button did not work for the owner. With it on, a subway
+  brake for nothing but another train: keep off the track. At the end of a track a train or tram waits a moment and goes back the way it came. Trains have no stations yet. You can take a bus; trams stay on their rails. A subway
   entrance is a stairwell going down, with a sign on a post beside it (a white letter on a blue disc:
-  U in Germany and Austria, M elsewhere; the game's own sign, no operator's symbol): walk in on foot and you come up at the station nearest to where you're headed.
+  U in Germany and Austria, M elsewhere; the game's own sign, no operator's symbol): walk in on foot and you come up at the station nearest to where you're headed. **Rides are switched
+  off for now** (`SUBWAY_RIDES` in `src/game/world.ts`): on the iPad the ride did not start. The entrances and signs stay.
 - **The ground is calmed before the town is built on it** (`src/game/ground.ts`). The height data is measured
   from above, and among tall buildings it measured roofs: the ground then bulged up between them and
   swallowed smaller houses. Around buildings every bump narrower than about 155 m is taken down to the
