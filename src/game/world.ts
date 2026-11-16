@@ -75,6 +75,12 @@ Object.assign(PALETTE, {
 
 
 /** Towers are squashed so the camera can stay close above the streets. */
+/**
+ * Whether a subway entrance can be walked into for a ride. Off for now (owner, 16 November 2026):
+ * on the iPad the ride did not start. The entrances, their signs and stairwells stay.
+ */
+export const SUBWAY_RIDES = false;
+
 export function gameHeight(h: number): number {
   return h <= 18 ? h : 18 + (h - 18) * 0.3;
 }

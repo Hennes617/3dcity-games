@@ -32,7 +32,7 @@ import { Car, collideCars, type CarKind } from './cars';
 import type { Input } from './input';
 import { Strip, drawnOverGround } from './roadMesh';
 import { laneOffset, SPEED_LIMIT, type PathState, type Pick, type RouteField } from './roads';
-import { areaCentre, riseUnder, World } from './world';
+import { areaCentre, riseUnder, SUBWAY_RIDES, World } from './world';
 import type { Ears, Sfx } from '../sound';
 import { JOB_OF, type JobKind } from './services';
 
@@ -1081,6 +1081,7 @@ export class Game {
 
   /** The subway entrance you're standing at, if any. */
   private subwayHere(): number {
+    if (!SUBWAY_RIDES) return -1;
     const stops = this.world.stops;
     for (let i = 0; i < stops.length; i++) if (stops[i].kind === 'subway' && Math.hypot(stops[i].x - this.me.x, stops[i].y - this.me.y) < 4.5) return i;
     return -1;
