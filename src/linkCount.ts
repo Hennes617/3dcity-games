@@ -36,6 +36,20 @@ function count(kind: 'made' | 'opened' | 'youtube', at?: Place): void {
   }).catch(() => undefined);
 }
 
+/**
+ * Links posted in public are opened by machines as well: the checkers of the site they are posted
+ * on load the page, run it, and leave. They do not touch it. So an opened link and an arrival are
+ * counted only once the visitor has touched, clicked or pressed a key.
+ */
+const person = new Promise<void>((seen) => {
+  const on = (e: Event): void => {
+    if (!e.isTrusted) return;
+    for (const k of ['pointerdown', 'keydown', 'touchstart']) removeEventListener(k, on, true);
+    seen();
+  };
+  for (const k of ['pointerdown', 'keydown', 'touchstart']) addEventListener(k, on, true);
+});
+
 // for as long as the page is open: a second press on the button for the same run is the same link
 const made = new Set<string>();
 
@@ -48,35 +62,30 @@ export function countMade(code: string, at: Place): void {
 
 /** The game was opened by a challenge link for a run that starts at this place. */
 export function countOpened(at: Place): void {
-  count('opened', at);
+  void person.then(() => count('opened', at));
 }
 
 let arriving = false;
-
-/** The video visitor's one count, without a square: they have not played anywhere yet. */
-function unplaced(): void {
-  if (!arriving) return;
-  arriving = false;
-  count('youtube');
-}
+let played: Place | undefined;
 
 /**
- * The game was opened by the link under a video. It is counted once: with the square of the first
- * place the visitor plays, or without one if half a minute passes, or the page is put away, before
- * they play anywhere.
+ * The game was opened by the link under a video. It is counted once, when the visitor first
+ * touches the page: with the square of the place they are playing, or without one if they have
+ * not played anywhere yet.
  */
 export function cameByVideo(query: URLSearchParams): void {
   if (query.get('ref') !== 'youtube') return;
   arriving = true;
-  setTimeout(unplaced, 30000);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') unplaced();
+  void person.then(() => {
+    // a moment, so that a place chosen by this very touch is known
+    setTimeout(() => {
+      arriving = false;
+      count('youtube', played);
+    }, 4000);
   });
 }
 
-/** A place is being loaded to play in: if the visitor came by the video link, that is their count. */
+/** A place is being loaded to play in: where a visitor from the video link is counted. */
 export function playingAt(at: Place): void {
-  if (!arriving) return;
-  arriving = false;
-  count('youtube', at);
+  if (arriving) played = at;
 }
