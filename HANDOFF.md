@@ -165,8 +165,9 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   (`docs/supabase/play_counts.sql`): `new`/`back` visits once a day per browser with a one-word source,
   `run`, `home` (flat/house/building), `rent`. The owner reads it in the SQL Editor:
   `select day, kind, detail, n from play_counts order by day desc, kind, detail;`. The table is live in the
-  project; the game code that writes to it is on branch `claude/homes`, not deployed. Three test rows of
-  16 November (two `new`/`other`, one `home`/`flat`) were left in it: deleting them asks the owner first.
+  project; the game code that writes to it is on branch `claude/homes`, not deployed. The table was empty
+  on 16 November (the owner deleted three test rows). Deletes through the Supabase tool ask the owner to
+  confirm and that answer did not arrive in time, twice; for a delete, give the owner the SQL to run instead.
 - **Saving online for everyone, with homes (owner, 16 November 2026).** The owner's worry was space and
   traffic, not names: a save belongs to its secret code, so two players may share a name (a number as a
   suggestion is for later, if names are ever shown publicly). Done: the box shows on every start screen
