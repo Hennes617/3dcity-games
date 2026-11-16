@@ -329,3 +329,4 @@ body.secret #btn-radio, body.secret #radio-bar { display: none; }
 #guess-name, #guess-link { width: 100%; box-sizing: border-box; margin: 8px 0 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #181b20; color: var(--ink); font: inherit; font-size: 16px; }
 #btn-guess-send { width: 100%; margin-top: 8px; padding: 13px; font-size: 17px; }
 #guess-rival { color: var(--ink); font-size: 15px; }
+#mode-guess { grid-column: 1 / -1; }
