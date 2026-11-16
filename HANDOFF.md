@@ -137,6 +137,21 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   Ottawa and clear in Hong Kong.
 - **Keep it its own thing.** The name nods at a famous game; the look, the mark and the wording must not
   imitate that game or any other. No references to it in the product or its publicity.
+- **Planned: move the game's home to https://mindmacher.com/3da/ (owner, 16 November 2026), then SEO.**
+  Today that address is only a forwarder to github.io, tagged `?ref=youtube`, with `noindex`
+  (`docs/mindmacher/3da/index.html`; the site is Hostinger shared hosting). Checked: the build uses a
+  relative base, the map, search, radio and Supabase services take any origin, and only `index.html`
+  (og:image) and `WEB_HOME` in `src/challenge.ts` name github.io. Plan, not started:
+  1. Build for mindmacher.com/3da/: canonical, og:url, og:image and the sitemap all on that address.
+  2. The github.io copy becomes a forwarder that carries the browser's saves across once: it gathers the
+     `3da-*` keys (as `gather()` in `cloud.ts` does, plus `3da-full-key`) into the link's `#`, and the new
+     site writes them only where that browser has nothing yet. Old links and challenges keep working.
+  3. YouTube visits get their own link (`…/3da/?ref=youtube`), as search visitors will arrive at the plain one.
+  4. SEO: canonical, JSON-LD (VideoGame), robots.txt, sitemap, a short readable text, and a static page
+     per built-in city (`/3da/hamburg/`) with its own title, description and card.
+  5. The owner adds mindmacher.com to Google Search Console and submits the sitemap.
+  Open question for the owner: deploy to Hostinger by FTP from the workflow (FTP login as a repo secret,
+  still started by hand) or by uploading a built folder in the file manager.
 
 ## How the game is built, in the parts that surprised
 
