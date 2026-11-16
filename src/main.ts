@@ -889,8 +889,20 @@ addEventListener('keydown', (e) => {
 $('btn-anyway').addEventListener('click', begin);
 addEventListener('pagehide', () => save());
 
-// saving online, for a player who enters a name; without one none of it contacts anyone
-if (!BAKED) {
+// saving online, for a player who enters a name; without one none of it contacts anyone.
+// Not offered yet: a trial, switched on with `?try=saving` in the address and remembered by the
+// browser until `?try=nosaving`. Without it there is no box on the start screen and no save link is read.
+const savingTrial = ((): boolean => {
+  try {
+    const tries = (new URLSearchParams(location.search).get('try') ?? '').split(',');
+    if (tries.includes('saving')) localStorage.setItem('3da-try-saving', '1');
+    if (tries.includes('nosaving')) localStorage.removeItem('3da-try-saving');
+    return localStorage.getItem('3da-try-saving') === '1';
+  } catch {
+    return false;
+  }
+})();
+if (!BAKED && savingTrial) {
   // a game saved on another device comes first: it replaces what this browser has, then the page starts again
   if ((await cloudArrive((name) => confirm(`Replace the game on this device with ${name}'s saved game? The game and scoreboard here would be lost.`))) === 'reload') location.reload();
   wireCloud($('account'), linkHome(location), lastName);

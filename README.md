@@ -66,7 +66,8 @@ the streets, buildings, water and hills come from the same map squares as
   (`?ref=youtube`), each with the region of the map being played (a square of one degree, about
   100 km), and nothing else: nothing about the player, the friend or where they are
   (`src/linkCount.ts`). Saving
-  online is optional: a player who enters a name on the start screen has their name and game kept on
+  online is a trial for now, with `?try=saving` in the address (remembered until `?try=nosaving`);
+  without it nothing of it is shown or contacted. With it, saving is optional: a player who enters a name on the start screen has their name and game kept on
   a server, to go on with it on another device, and can delete it there again; without a name nothing
   is sent (`src/cloud.ts`). The card says so under the button.
 - **Heat.** Knocking people over, taking someone's car and ramming traffic or the police raise it (up to
