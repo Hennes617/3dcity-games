@@ -19,6 +19,7 @@ import { Controls } from './game/input';
 import { Minimap } from './game/minimap';
 import { areaKey, squaresAround, World } from './game/world';
 import { findPlace, nearCity, placeAt } from './places';
+import { newRound, played, points, type Round } from './guess';
 import { addScore, lastName, nameScore, scores, type Score } from './scores';
 import { BAKED } from './geo/mapCache';
 import type { LngLat } from './geo/projection';
@@ -67,24 +68,29 @@ let mapOpen = false;
 let paused = false;
 const MODE = '3da-mode';
 /** what the start screen is set to: a run of three to compare, or open jobs */
-let mode: 'run' | 'jobs' | 'battle' = ((): 'run' | 'jobs' => {
+let mode: 'run' | 'jobs' | 'battle' | 'guess' = ((): 'run' | 'jobs' => {
   try {
     return localStorage.getItem(MODE) === 'jobs' ? 'jobs' : 'run';
   } catch {
     return 'run';
   }
 })();
-function setMode(m: 'run' | 'jobs' | 'battle'): void {
+function setMode(m: 'run' | 'jobs' | 'battle' | 'guess'): void {
   mode = m;
   try {
     // a battle is chosen each time: a plain link on a later visit must not start one
-    if (m !== 'battle') localStorage.setItem(MODE, m);
+    if (m === 'run' || m === 'jobs') localStorage.setItem(MODE, m);
   } catch {
     /* it lasts as long as the page */
   }
   $('mode-run').setAttribute('aria-pressed', String(m === 'run'));
   $('mode-jobs').setAttribute('aria-pressed', String(m === 'jobs'));
   $('mode-battle').setAttribute('aria-pressed', String(m === 'battle'));
+  $('mode-guess').setAttribute('aria-pressed', String(m === 'guess'));
+  // a city to guess is not one the player picks
+  $('btn-drop').hidden = m !== 'guess';
+  $('search').hidden = m === 'guess' || !!BAKED;
+  $('places').hidden = m === 'guess';
 }
 const ROUTE = 'drive-it-3d-route';
 
@@ -151,7 +157,7 @@ function showMap(open: boolean): void {
   $('bigmap').hidden = !open;
   controls.enabled = playing && !open;
   if (open) {
-    $('bigmap-place').textContent = placeName;
+    $('bigmap-place').textContent = secret ? 'Where am I?' : placeName;
     lineButton();
   }
 }
@@ -215,10 +221,11 @@ async function go(at: LngLat, name?: string, sent: Challenge | null = null, join
   if (busy) return;
   busy = true;
   endBattle();
+  if (!dropping) endGuess();
   playingAt(at);
   status.className = 'status';
   status.textContent = '';
-  working(name ? `Loading ${name}` : 'Loading the streets');
+  working(dropping ? 'Putting you down somewhere' : name ? `Loading ${name}` : 'Loading the streets');
   try {
     if (!game) {
       game = new Game(canvas, small);
@@ -272,11 +279,12 @@ async function go(at: LngLat, name?: string, sent: Challenge | null = null, join
     }
     arrived = false;
     save(at);
-    if (!BAKED) history.replaceState(null, '', `${sent ? location.search : withoutChallenge()}#${at.lat.toFixed(5)},${at.lon.toFixed(5)}`);
+    // the address would give a city to guess away
+    if (!BAKED) history.replaceState(null, '', dropping ? withoutChallenge() : `${sent ? location.search : withoutChallenge()}#${at.lat.toFixed(5)},${at.lon.toFixed(5)}`);
     $('btn-menu').blur();
     status.textContent = '';
     // little on the map here: say so, and let them choose
-    const thin = game.world.thin;
+    const thin = game.world.thin && !dropping;
     $('thin').hidden = !thin;
     if (thin) {
       $<HTMLAnchorElement>('thin-map').href = `https://www.openstreetmap.org/#map=16/${at.lat.toFixed(5)}/${at.lon.toFixed(5)}`;
@@ -301,8 +309,10 @@ async function go(at: LngLat, name?: string, sent: Challenge | null = null, join
 /** The name of the place across the screen as the game starts there; with a run someone sent, what there is to beat. */
 function arrive(): void {
   arrived = true;
-  $('arrive-place').textContent = placeName;
-  $('arrive-line').textContent = rival
+  $('arrive-place').textContent = secret ? 'Where am I?' : placeName;
+  $('arrive-line').textContent = secret
+    ? 'Drive around and look. Tap “Guess the city” when you know: the sooner, the more points.'
+    : rival
     ? `${rival.name || 'Someone'} made ${fmtMoney(rival.score)} here in ${fmtTime(rival.seconds)}. Same ${deliveries(rival.course.legs.length)}: beat it.`
     : game?.run.over
       ? 'Open jobs: look for the pump, the flame and the badge'
@@ -461,7 +471,7 @@ function begin(): void {
   setScreen('play');
   if (placeKnown) arrive();
   if (rival && coached()) return;
-  if (mode === 'battle' || battle) return;
+  if (mode === 'battle' || battle || secret) return;
   // open jobs from the start: say where they are, once the place's name has been read
   if (game?.run.over && coached()) {
     setTimeout(() => playing && game?.run.over && openJobs(true), 3600);
@@ -470,6 +480,151 @@ function begin(): void {
   if (coached()) toast(document.body.classList.contains('touch') ? 'Walk to a car and tap In / out' : 'Walk to a car and press E', 'info');
   else if (step < 0) step = 0;
 }
+
+// ------------------------------------------------------------------ where am I?
+
+/** the city being guessed: its name is kept off the screen until it is picked */
+let secret: Round | null = null;
+/** a city to guess is being loaded */
+let dropping = false;
+/** the card with the four names is up and the game waits behind it */
+let guessing = false;
+/** how long the player has looked around (s), and the wrong names picked */
+let lookedS = 0;
+let wrongPicks = 0;
+/** this visit: cities guessed and the points they made */
+const tally = { cities: 0, points: 0 };
+
+function endGuess(): void {
+  secret = null;
+  guessing = false;
+  minimap.secret = bigmap.secret = false;
+  document.body.classList.remove('secret');
+  $('btn-guess').hidden = true;
+  $('guess').hidden = true;
+}
+
+/** Put the player down in a city they are not told; one that doesn't load or has little on the map is passed over. */
+async function drop(): Promise<void> {
+  if (busy) return;
+  const failed: string[] = [];
+  for (let tries = 0; tries < 4; tries++) {
+    const round = newRound(failed);
+    dropping = true;
+    secret = round;
+    lookedS = 0;
+    wrongPicks = 0;
+    try {
+      await go(round.at);
+    } finally {
+      dropping = false;
+    }
+    if (playing && game?.world && !game.world.thin) {
+      played(round.city);
+      minimap.secret = bigmap.secret = true;
+      document.body.classList.add('secret');
+      $('btn-guess').hidden = false;
+      status.textContent = '';
+      return;
+    }
+    failed.push(round.city);
+    setScreen('start');
+  }
+  endGuess();
+  status.className = 'status error';
+  status.textContent = navigator.onLine === false ? 'You seem to be offline.' : 'No city would load just now. Try again in a moment.';
+}
+
+function tallyLine(): string {
+  return tally.cities ? `This visit: ${tally.cities} ${tally.cities === 1 ? 'city' : 'cities'}, ${tally.points.toLocaleString('en')} points.` : '';
+}
+
+/** The four names, to pick one. The game and the points wait while they are up. */
+function askGuess(): void {
+  if (!secret || !playing || mapOpen || paused) return;
+  guessing = true;
+  controls.enabled = false;
+  $('guess-title').textContent = 'Which city is this?';
+  $('guess-score').textContent = `${points(lookedS, wrongPicks)} points`;
+  $('guess-line').textContent = 'A wrong pick costs 250 points and takes that name away.';
+  $('guess-after').hidden = true;
+  $('guess-before').hidden = false;
+  $('guess-tally').textContent = tallyLine();
+  const box = $('guess-options');
+  box.replaceChildren();
+  for (const name of secret.options) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = name;
+    b.addEventListener('click', () => pick(name, b));
+    box.append(b);
+  }
+  $('guess').hidden = false;
+}
+
+function pick(name: string, b: HTMLButtonElement): void {
+  const round = secret;
+  if (!round || b.disabled) return;
+  const buttons = [...$('guess-options').querySelectorAll('button')];
+  if (name !== round.city) {
+    wrongPicks++;
+    b.disabled = true;
+    b.classList.add('wrong');
+    sound.play('late');
+    // one name left: that is no guess any more
+    const open = buttons.filter((o) => !o.disabled);
+    if (open.length > 1) {
+      $('guess-score').textContent = `${points(lookedS, wrongPicks)} points`;
+      $('guess-line').textContent = `Not ${name}. Pick again, or look around some more.`;
+      return;
+    }
+  }
+  const got = name === round.city ? points(lookedS, wrongPicks) : 0;
+  for (const o of buttons) {
+    o.disabled = true;
+    if (o.textContent === round.city) o.classList.add('right');
+  }
+  if (got) sound.play('run');
+  tally.cities++;
+  tally.points += got;
+  // the name is out: the town is a town like any other from here on
+  secret = null;
+  minimap.secret = bigmap.secret = false;
+  document.body.classList.remove('secret');
+  $('btn-guess').hidden = true;
+  placeName = round.city;
+  placeKnown = true;
+  if (!BAKED) history.replaceState(null, '', `${withoutChallenge()}#${round.at.lat.toFixed(5)},${round.at.lon.toFixed(5)}`);
+  $('guess-title').textContent = got ? `${round.city}. Right!` : `It is ${round.city}.`;
+  $('guess-score').textContent = got ? `${got} points` : 'No points this time';
+  const s = Math.round(lookedS);
+  $('guess-line').textContent = got ? `After ${s < 60 ? `${s} seconds` : fmtTime(s)} of looking${wrongPicks ? ` and ${wrongPicks === 1 ? 'one wrong pick' : `${wrongPicks} wrong picks`}` : ''}.` : 'Three wrong picks leave only one name.';
+  $('guess-tally').textContent = tallyLine();
+  $('guess-before').hidden = true;
+  $('guess-after').hidden = false;
+}
+
+function closeGuess(): void {
+  guessing = false;
+  $('guess').hidden = true;
+  controls.enabled = playing;
+  before = 0;
+}
+$('btn-guess').addEventListener('click', () => {
+  askGuess();
+  $('btn-guess').blur();
+});
+$('btn-guess-back').addEventListener('click', closeGuess);
+$('btn-guess-stay').addEventListener('click', () => {
+  closeGuess();
+  toast('Open jobs from the stations in town', 'info');
+});
+$('btn-guess-next').addEventListener('click', () => {
+  closeGuess();
+  save();
+  setScreen('start');
+  void drop();
+});
 
 // ------------------------------------------------------------------ first-time tour
 
@@ -765,7 +920,8 @@ function paint(h: Hud): void {
   while (box.children.length < h.sights.length) box.append(document.createElement('div'));
   for (let i = 0; i < box.children.length; i++) {
     const el = box.children[i] as HTMLElement;
-    const s = h.sights[i];
+    // a sight's name would give the city away
+    const s = secret ? undefined : h.sights[i];
     el.hidden = !s;
     if (!s) continue;
     const text = s.metres === null ? s.name : `${s.name} · ${fmtM(s.metres)}`;
@@ -808,8 +964,8 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
   const dt = before ? (now - before) / 1000 : 0;
   before = now;
-  if (!game?.world || !playing || mapOpen || paused) sound.hear(null);
-  if (paused) return;
+  if (!game?.world || !playing || mapOpen || paused || guessing) sound.hear(null);
+  if (paused || guessing) return;
   if (!game?.world || !playing) {
     // behind the result of a run the camera goes on rising
     if (game?.world && fresh && !$('result').hidden) {
@@ -824,6 +980,11 @@ function frame(now: number): void {
   }
   game.tune(dt);
   game.update(dt, controls.read());
+  if (secret) {
+    // a frame that took long (the next streets arriving) is not time spent looking
+    lookedS += Math.min(dt, 0.25);
+    put('btn-guess', `Guess the city<b>${points(lookedS, wrongPicks)}</b>`);
+  }
   sound.hear(game.ears());
   if (showFps) fpsReadout(dt);
   const h = game.hud();
@@ -889,7 +1050,7 @@ for (const el of document.querySelectorAll<HTMLElement>('#bigmap-key .ico, #open
 
 /** Hold the game, or let it go on. The card also lets the player change what they are playing. */
 function setPause(on: boolean): void {
-  if (on && (!playing || mapOpen || !$('result').hidden)) return;
+  if (on && (!playing || mapOpen || !$('result').hidden || !$('guess').hidden)) return;
   paused = on;
   $('pause').hidden = !on;
   controls.enabled = playing && !on;
@@ -899,6 +1060,11 @@ function setPause(on: boolean): void {
   if (battle) {
     $('pause-line').textContent = 'You are in a battle. The other player drives on while you are here.';
     $('btn-switch').textContent = 'Show the invitation';
+    return;
+  }
+  if (secret) {
+    $('pause-line').textContent = 'You are guessing a city. The points wait while you are here.';
+    $('btn-switch').hidden = true;
     return;
   }
   $('pause-line').textContent = jobs ? 'You are doing open jobs.' : rival ? `You are on the run ${rival.name || 'someone'} sent you.` : 'You are on a run of three deliveries.';
@@ -949,6 +1115,8 @@ setMode(mode);
 $('mode-run').addEventListener('click', () => setMode('run'));
 $('mode-jobs').addEventListener('click', () => setMode('jobs'));
 $('mode-battle').addEventListener('click', () => setMode('battle'));
+$('mode-guess').addEventListener('click', () => setMode('guess'));
+$('btn-drop').addEventListener('click', () => void drop());
 
 const soundButton = (): void => {
   $('btn-sound').classList.toggle('off', !sound.on);
