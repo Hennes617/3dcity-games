@@ -85,10 +85,10 @@ the streets, buildings, water and hills come from the same map squares as
   or where they are. Whether a browser was here before is a date kept in it (`3da-visit-day`) that is never
   sent. Test browsers and the developer's own machine are not counted (`src/linkCount.ts`,
   `docs/supabase/play_counts.sql`). Saving
-  online is a trial for now, with `?try=saving` in the address (remembered until `?try=nosaving`);
-  without it nothing of it is shown or contacted. With it, saving is optional: a player who enters a name on the start screen has their name and game kept on
+  online is offered on the start screen (`?try=nosaving` in the address hides it in that browser). Saving is optional: a player who enters a name on the start screen has their name and game kept on
   a server, to go on with it on another device, and can delete it there again; without a name nothing
-  is sent (`src/cloud.ts`). The card says so under the button.
+  is sent (`src/cloud.ts`). The card says so under the button. A saved game not played for six months is
+  deleted; 20,000 saved games at most for now, 150,000 characters each (`docs/supabase/saves_limits.sql`).
 - **Heat.** Knocking people over, taking someone's car and ramming traffic or the police raise it (up to
   four badges). More heat brings more police cars. Stay out of their sight and it cools off; stop next to
   one and you're caught and fined.

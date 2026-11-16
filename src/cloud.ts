@@ -22,7 +22,8 @@ const STAMP = '3da-save-at';
 const DIRTY = '3da-save-dirty';
 /** Never sent: the save code itself, when it was last sent, and a tester's private key. */
 const PRIVATE = new Set([CODE, STAMP, DIRTY, '3da-full-key']);
-const LIMIT = 60000;
+/** the most a saved game may hold (characters); the server takes up to 150,000 */
+const LIMIT = 120000;
 
 const get = (k: string): string | null => {
   try {
@@ -79,6 +80,9 @@ function gather(): Record<string, string> {
   }
   return out;
 }
+
+/** Whether the game here is small enough to save online. */
+export const fitsOnline = (): boolean => JSON.stringify(gather()).length <= LIMIT;
 
 // What was last sent, or found here at the start of the visit: an unchanged game is never sent again.
 let last = get(CODE) && !get(DIRTY) ? JSON.stringify(gather()) : '';

@@ -167,6 +167,16 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   `select day, kind, detail, n from play_counts order by day desc, kind, detail;`. The table is live in the
   project; the game code that writes to it is on branch `claude/homes`, not deployed. Three test rows of
   16 November (two `new`/`other`, one `home`/`flat`) were left in it: deleting them asks the owner first.
+- **Saving online for everyone, with homes (owner, 16 November 2026).** The owner's worry was space and
+  traffic, not names: a save belongs to its secret code, so two players may share a name (a number as a
+  suggestion is for later, if names are ever shown publicly). Done: the box shows on every start screen
+  (`?try=nosaving` hides it in a browser); homes are kept short (`packHomes`, about 45 characters a home, a
+  thousand fit); the game stops at 120,000 characters a save and says so on the card; on the server
+  (`docs/supabase/saves_limits.sql`, live in the project, which the live game also uses) up to 20,000 saves,
+  150,000 characters each, and saves unchanged for six months are deleted when new ones are made (a visit
+  changes the save). Found while testing: the map gives one number to a group of buildings mapped as one
+  thing (87 in a Nuremberg square), so a home is matched to the nearest building with its number
+  (`homesIn`), never by the number alone.
 - **Planned: move the game's home to https://mindmacher.com/3da/ (owner, 16 November 2026), then SEO.**
   Today that address is only a forwarder to github.io, tagged `?ref=youtube`, with `noindex`
   (`docs/mindmacher/3da/index.html`; the site is Hostinger shared hosting). Checked: the build uses a

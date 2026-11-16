@@ -3,7 +3,7 @@
  * a name, carry it to another device, or stop.
  */
 
-import { cleanName, deviceLink, savedName, savingOn, startSaving, stopSaving } from './cloud';
+import { cleanName, deviceLink, fitsOnline, savedName, savingOn, startSaving, stopSaving } from './cloud';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -27,7 +27,7 @@ export function wireCloud(box: HTMLElement, home: string, suggested: () => strin
     if (!savingOn()) {
       box.innerHTML =
         '<form id="cloud-form"><input type="text" maxlength="16" placeholder="Your name" autocomplete="off" required /><button>Save my game online</button></form>' +
-        `<p class="small" id="cloud-note" aria-live="polite">${esc(note) || 'Optional. With a name, your game is kept online so you can go on with it on another device. No email, no password. Without a name nothing is sent.'}</p>`;
+        `<p class="small" id="cloud-note" aria-live="polite">${esc(note) || 'Optional. With a name, your game is kept online so you can go on with it on another device. No email, no password. Without a name nothing is sent. A game not played for six months is deleted.'}</p>`;
       const form = box.querySelector<HTMLFormElement>('#cloud-form')!;
       const input = form.querySelector('input')!;
       input.value = suggested();
@@ -43,7 +43,7 @@ export function wireCloud(box: HTMLElement, home: string, suggested: () => strin
     box.innerHTML =
       `<p class="small">Your game is saved online as <b>${esc(savedName())}</b>.</p>` +
       '<div class="row"><button type="button" id="cloud-link">Go on with it on another device</button><button type="button" id="cloud-stop">Stop saving and delete it</button></div>' +
-      `<p class="small" id="cloud-note" aria-live="polite">${esc(note)}</p><input id="cloud-url" type="text" readonly hidden aria-label="Link to your saved game" />`;
+      `<p class="small" id="cloud-note" aria-live="polite">${esc(note || (fitsOnline() ? '' : 'Your game has grown too big to save online: the online copy is from before. It is all still kept on this device.'))}</p><input id="cloud-url" type="text" readonly hidden aria-label="Link to your saved game" />`;
     const say = (t: string): void => {
       box.querySelector('#cloud-note')!.textContent = t;
     };

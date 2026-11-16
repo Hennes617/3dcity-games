@@ -6,7 +6,7 @@
 
 import type { Game } from './game/game';
 import type { World } from './game/world';
-import { dayOf, homeAt, loadHomes, rentDue, rentFor, rentPerVisit, saveHomes, type Home, type Homes, type Lot } from './game/homes';
+import { dayOf, homesIn, loadHomes, rentDue, rentFor, rentPerVisit, saveHomes, type Home, type Homes, type Lot } from './game/homes';
 import { pointInRing } from './geo/polygon';
 import { countPlay } from './linkCount';
 
@@ -101,10 +101,12 @@ export class HomesUi {
     });
   }
 
+  /** which building of the square being played each home is */
+  private owned = new Map<Lot, Home>();
+
   /** Home kept for a lot of the square being played. */
   private homeOf(lot: Lot): Home | undefined {
-    const ll = this.world!.proj.toLngLat(lot.x, lot.y);
-    return homeAt(this.homes, lot, ll.lat, ll.lon);
+    return this.owned.get(lot);
   }
 
   private tick(dt: number): void {
@@ -125,7 +127,8 @@ export class HomesUi {
     this.world = world;
     this.marks.clear();
     this.near = null;
-    for (const lot of world.lots) if (this.homeOf(lot)) this.marks.set(lot, world.mark(icon(), lot.x, lot.y));
+    this.owned = homesIn(this.homes, world.lots, (lon, lat) => world.proj.toLocal(lon, lat));
+    for (const lot of this.owned.keys()) this.marks.set(lot, world.mark(icon(), lot.x, lot.y));
   }
 
   /** Pay the rent of a new day, once. On arrival, say so. */
@@ -164,7 +167,9 @@ export class HomesUi {
       had.paid += price;
       had.rent = rentFor(had.paid);
     } else {
-      this.homes.homes.push({ id: lot.id, lat: ll.lat, lon: ll.lon, kind: what, paid: price, rent: rentFor(price), street: lot.street, place: this.host.place(), at: Date.now() });
+      const home: Home = { id: lot.id, lat: ll.lat, lon: ll.lon, kind: what, paid: price, rent: rentFor(price), street: lot.street, place: this.host.place(), at: Date.now() };
+      this.homes.homes.push(home);
+      this.owned.set(lot, home);
       this.marks.set(lot, this.world!.mark(icon(), lot.x, lot.y));
     }
     saveHomes(this.homes);

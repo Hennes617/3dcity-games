@@ -341,11 +341,42 @@ export function dayOf(ms: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/**
+ * How homes are kept, short, so a player with a thousand homes still fits in an online save: names of
+ * streets and places once each, a home as [map number, lat, lon, kind letter, paid, street, place, day
+ * bought]. The rent is not kept: it follows from the price paid.
+ */
+type Kept = { v: 2; d: string; s: string[]; p: string[]; h: Array<[string, number, number, string, number, number, number, number]> };
+const KINDS = { flat: 'f', house: 'h', building: 'b' } as const;
+const DAY_MS = 86400000;
+
+export function packHomes(h: Homes): string {
+  const streets: string[] = [];
+  const places: string[] = [];
+  const index = (list: string[], v: string) => {
+    const i = list.indexOf(v);
+    return i >= 0 ? i : list.push(v) - 1;
+  };
+  const kept: Kept = {
+    v: 2,
+    d: h.paidDay,
+    s: streets,
+    p: places,
+    h: h.homes.map((x) => [x.id, Math.round(x.lat * 1e5) / 1e5, Math.round(x.lon * 1e5) / 1e5, KINDS[x.kind], x.paid, index(streets, x.street), index(places, x.place), Math.floor(x.at / DAY_MS)]),
+  };
+  return JSON.stringify(kept);
+}
+
 export function readHomes(raw: string | null, now = Date.now()): Homes {
   try {
-    const h = JSON.parse(raw ?? '') as Homes & { paidUntil?: number };
+    const h = JSON.parse(raw ?? '') as (Homes & { paidUntil?: number }) | Kept;
+    if (h && h.v === 2 && Array.isArray(h.h)) {
+      const kind = (k: string): Home['kind'] => (k === 'b' ? 'building' : k === 'h' ? 'house' : 'flat');
+      const homes = h.h.map(([id, lat, lon, k, paid, si, pi, day]) => ({ id, lat, lon, kind: kind(k), paid, rent: rentFor(paid), street: h.s[si] ?? '', place: h.p[pi] ?? '', at: day * DAY_MS }));
+      return { v: 1, homes, paidDay: typeof h.d === 'string' ? h.d : dayOf(now) };
+    }
     if (h && h.v === 1 && Array.isArray(h.homes)) {
-      // the rent follows the price paid, whatever an older version kept
+      // the first way of keeping them; the rent follows the price paid, whatever was kept
       const homes = h.homes.map((x) => ({ ...x, rent: rentFor(x.paid) }));
       const paidDay = typeof h.paidDay === 'string' ? h.paidDay : dayOf(Number.isFinite(h.paidUntil) ? h.paidUntil! : now);
       return { v: 1, homes, paidDay };
@@ -366,7 +397,7 @@ export function loadHomes(): Homes {
 
 export function saveHomes(h: Homes): void {
   try {
-    localStorage.setItem(STORE, JSON.stringify(h));
+    localStorage.setItem(STORE, packHomes(h));
   } catch {
     /* private window: owned for this visit only */
   }
@@ -387,14 +418,34 @@ export function rentFor(paid: number): number {
   return Math.max(1, Math.round(paid * RENT_PER_VISIT));
 }
 
-/** The home kept for this building, if any: by the map's number, or failing that by where it stands. */
-export function homeAt(h: Homes, lot: { id: string }, lat: number, lon: number): Home | undefined {
-  if (lot.id) {
-    const same = h.homes.find((x) => x.id === lot.id);
-    if (same) return same;
+/**
+ * Which building each home is, in a square: the nearest building with the home's map number within
+ * 30 m, or failing that (the map has redrawn it under a new number) the nearest within 4 m of where it
+ * stood. Each home is one building. The number alone is not enough: the map gives one number to a
+ * group of buildings mapped as one thing (87 buildings in a Nuremberg square share one).
+ */
+export function homesIn<L extends { id: string; x: number; y: number }>(h: Homes, lots: L[], toLocal: (lon: number, lat: number) => [number, number]): Map<L, Home> {
+  const found = new Map<L, Home>();
+  for (const home of h.homes) {
+    const [hx, hy] = toLocal(home.lon, home.lat);
+    let best: L | null = null;
+    let bestD = Infinity;
+    let near: L | null = null;
+    let nearD = 4;
+    for (const l of lots) {
+      if (found.has(l)) continue;
+      const d = Math.hypot(l.x - hx, l.y - hy);
+      if (home.id && l.id === home.id && d < 30 && d < bestD) {
+        best = l;
+        bestD = d;
+      }
+      if (d < nearD) {
+        near = l;
+        nearD = d;
+      }
+    }
+    const lot = best ?? near;
+    if (lot) found.set(lot, home);
   }
-  // a building the map has redrawn since (it has a new number): the one standing where it stood
-  const m = 111320;
-  const k = Math.cos((lat * Math.PI) / 180);
-  return h.homes.find((x) => Math.hypot((x.lat - lat) * m, (x.lon - lon) * m * k) < 4);
+  return found;
 }

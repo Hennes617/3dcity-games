@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayOf, findLots, homeAt, lotKind, readHomes, rentDue, rentFor, roundPrice, type LotBuilding } from '../src/game/homes';
+import { dayOf, findLots, packHomes, homesIn, lotKind, readHomes, rentDue, rentFor, roundPrice, type LotBuilding } from '../src/game/homes';
 
 const box = (x: number, y: number, w: number, h: number, height: number, id: string): LotBuilding => ({
   poly: { outer: [[x, y], [x + w, y], [x + w, y + h], [x, y + h]], holes: [] },
@@ -56,10 +56,26 @@ describe('homes', () => {
     expect(h.paidDay).toBe('2026-11-16');
   });
 
-  it('finds a home by the map number, or where it stood when the map has redrawn it', () => {
-    const h = readHomes(JSON.stringify({ v: 1, homes: [{ id: '7', lat: 49.45, lon: 11.07, kind: 'house', paid: 1, rent: 1, street: '', place: '', at: 0 }], paidDay: '2026-11-16' }));
-    expect(homeAt(h, { id: '7' }, 0, 0)).toBeTruthy();
-    expect(homeAt(h, { id: '8' }, 49.45001, 11.07)).toBeTruthy(); // 1 m away
-    expect(homeAt(h, { id: '8' }, 49.4502, 11.07)).toBeUndefined(); // 22 m away
+  it('finds each home as one building: its map number nearby, or where it stood when the map has redrawn it', () => {
+    const h = readHomes(JSON.stringify({ v: 1, homes: [{ id: '7', lat: 0, lon: 0, kind: 'house', paid: 1, rent: 1, street: '', place: '', at: 0 }], paidDay: '2026-11-16' }));
+    const local = (lon: number, lat: number): [number, number] => [lon, lat]; // the home stands at 0,0
+    // a group of buildings sharing number 7: the nearest is the home, the others are not
+    const group = [{ id: '7', x: 9, y: 0 }, { id: '7', x: 3, y: 0 }, { id: '7', x: 200, y: 0 }];
+    expect([...homesIn(h, group, local).keys()]).toEqual([group[1]]);
+    // redrawn under a new number: the building standing where it stood
+    expect([...homesIn(h, [{ id: '8', x: 1, y: 1 }, { id: '9', x: 20, y: 0 }], local).keys()]).toEqual([{ id: '8', x: 1, y: 1 }]);
+    // nothing near
+    expect(homesIn(h, [{ id: '7', x: 50, y: 0 }], local).size).toBe(0);
+  });
+
+  it('keeps a thousand homes short enough for an online save, and reads them back', () => {
+    const homes = Array.from({ length: 1000 }, (_, i) => ({ id: String(2980179962 + i), lat: 49.45095336 + i * 1e-4, lon: 11.07809990 - i * 1e-4, kind: (['flat', 'house', 'building'] as const)[i % 3], paid: 700 + i, rent: 0, street: `Street ${i % 40}`, place: i % 2 ? 'Nuremberg' : 'Berlin', at: 1794854100829 }));
+    const text = packHomes({ v: 1, homes, paidDay: '2026-11-16' });
+    expect(text.length).toBeLessThan(60000);
+    const back = readHomes(text);
+    expect(back.paidDay).toBe('2026-11-16');
+    expect(back.homes).toHaveLength(1000);
+    expect(back.homes[1]).toMatchObject({ id: '2980179963', kind: 'house', paid: 701, rent: rentFor(701), street: 'Street 1', place: 'Nuremberg' });
+    expect(Math.abs(back.homes[1].lat - homes[1].lat)).toBeLessThan(1e-5);
   });
 });

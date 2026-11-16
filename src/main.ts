@@ -900,16 +900,17 @@ $('btn-anyway').addEventListener('click', begin);
 addEventListener('pagehide', () => save());
 
 // saving online, for a player who enters a name; without one none of it contacts anyone.
-// Not offered yet: a trial, switched on with `?try=saving` in the address and remembered by the
-// browser until `?try=nosaving`. Without it there is no box on the start screen and no save link is read.
+// Offered to everyone since homes came (it was a trial behind `?try=saving` before). `?try=nosaving`
+// in the address hides it in that browser, until `?try=saving`.
 const savingTrial = ((): boolean => {
   try {
     const tries = (new URLSearchParams(location.search).get('try') ?? '').split(',');
-    if (tries.includes('saving')) localStorage.setItem('3da-try-saving', '1');
-    if (tries.includes('nosaving')) localStorage.removeItem('3da-try-saving');
-    return localStorage.getItem('3da-try-saving') === '1';
+    if (tries.includes('saving')) localStorage.removeItem('3da-no-saving');
+    if (tries.includes('nosaving')) localStorage.setItem('3da-no-saving', '1');
+    localStorage.removeItem('3da-try-saving');
+    return localStorage.getItem('3da-no-saving') !== '1';
   } catch {
-    return false;
+    return true;
   }
 })();
 if (!BAKED && savingTrial) {
