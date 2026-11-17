@@ -186,6 +186,8 @@ function toast(text: string, kind: 'good' | 'bad' | 'info' = 'info', ms = 3300):
   const el = document.createElement('div');
   el.className = `toast ${kind}`;
   el.textContent = text;
+  // it fades over the time it is shown, a long message as well as a short one
+  el.style.animationDuration = `${ms}ms`;
   const box = $('toasts');
   box.append(el);
   while (box.children.length > 3) box.firstElementChild!.remove();
