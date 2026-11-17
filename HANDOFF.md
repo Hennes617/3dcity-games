@@ -184,6 +184,9 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   …" for a player already saving) and the game waits behind it; a link to a saved game works for everyone.
   Left out on purpose for now (owner, 17 November): showing players which buildings are for sale and
   where. Next is what happens after the first flat is bought.
+  Ideas to brainstorm with the owner (17 November, nothing decided): tie homes to the shops, restaurants and
+  cafés found earlier (left out of the map for now, see above); and building something on top of a bought
+  building, so players slowly change their city.
 - **Supabase's GitHub link: not now (owner, 17 November 2026).** The dashboard shows "No repository
   connected"; that is Supabase's optional GitHub link (changes in `supabase/migrations/` on main go live by
   themselves, and test copies of the database per pull request on a paid plan). Not set up: the Supabase
