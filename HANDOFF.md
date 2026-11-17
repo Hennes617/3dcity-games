@@ -178,6 +178,9 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   changes the save). Found while testing: the map gives one number to a group of buildings mapped as one
   thing (87 in a Nuremberg square), so a home is matched to the nearest building with its number
   (`homesIn`), never by the number alone.
+  Changed on 17 November (owner): saving online opens with the first home bought ("the first building
+  bought is the one that starts allowing you to save"). The box shows once the browser owns a home or is
+  already saving; the buy message says so; a link to a saved game works for everyone.
 - **Supabase's GitHub link: not now (owner, 17 November 2026).** The dashboard shows "No repository
   connected"; that is Supabase's optional GitHub link (changes in `supabase/migrations/` on main go live by
   themselves, and test copies of the database per pull request on a paid plan). Not set up: the Supabase

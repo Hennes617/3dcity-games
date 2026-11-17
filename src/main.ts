@@ -6,7 +6,8 @@
 import { Game, MAX_CASH, RUN_JOBS, type Course, type Hud } from './game/game';
 import { linkHome, packChallenge, readChallenge, type Challenge } from './challenge';
 import { cameByVideo, countMade, countOpened, countPlay, countVisit, playingAt } from './linkCount';
-import { arrive as cloudArrive, changed } from './cloud';
+import { arrive as cloudArrive, changed, savingOn } from './cloud';
+import { loadHomes } from './game/homes';
 import { wireCloud } from './cloudUi';
 import { Sound } from './sound';
 import { addonHost } from './addon';
@@ -247,7 +248,7 @@ async function go(at: LngLat, name?: string, sent: Challenge | null = null): Pro
       controls.onMap = () => showMap(true);
       game.showRoute = routeLine();
       (window as unknown as { game: Game }).game = game;
-      homes = new HomesUi({ game, toast, save: () => save(), place: () => placeName });
+      homes = new HomesUi({ game, toast, save: () => save(), place: () => placeName, firstHome: () => openSaving() });
       addonHost({ game, toast, api: 2 });
       // a tester's key was in play: say how it went
       void fullNote.then((n) => n && toast(n.text, n.kind));
@@ -900,8 +901,14 @@ $('btn-anyway').addEventListener('click', begin);
 addEventListener('pagehide', () => save());
 
 // saving online, for a player who enters a name; without one none of it contacts anyone.
-// Offered to everyone since homes came (it was a trial behind `?try=saving` before). `?try=nosaving`
-// in the address hides it in that browser, until `?try=saving`.
+// It opens with the first home bought (or for a player already saving); a link to a saved game works
+// for everyone. `?try=nosaving` in the address hides it in that browser, until `?try=saving`.
+let savingOpen = false;
+function openSaving(): void {
+  if (BAKED || !savingTrial || savingOpen) return;
+  savingOpen = true;
+  wireCloud($('account'), linkHome(location), lastName);
+}
 const savingTrial = ((): boolean => {
   try {
     const tries = (new URLSearchParams(location.search).get('try') ?? '').split(',');
@@ -916,7 +923,7 @@ const savingTrial = ((): boolean => {
 if (!BAKED && savingTrial) {
   // a game saved on another device comes first: it replaces what this browser has, then the page starts again
   if ((await cloudArrive((name) => confirm(`Replace the game on this device with ${name}'s saved game? The game and scoreboard here would be lost.`))) === 'reload') location.reload();
-  wireCloud($('account'), linkHome(location), lastName);
+  if (savingOn() || loadHomes().homes.length) openSaving();
 }
 
 // a place in the link starts there straight away: coordinates, or a name to look up

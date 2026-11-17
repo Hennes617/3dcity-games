@@ -81,6 +81,8 @@ export interface HomesHost {
   save: () => void;
   /** the name of the place being played */
   place: () => string;
+  /** the first home was just bought: saving online opens */
+  firstHome?: () => void;
 }
 
 export class HomesUi {
@@ -159,7 +161,8 @@ export class HomesUi {
     // the rent so far goes out first, so the new home's rent starts now
     this.payRent();
     // a first home starts paying tomorrow
-    if (!this.homes.homes.length) this.homes.paidDay = dayOf(Date.now());
+    const first = !this.homes.homes.length;
+    if (first) this.homes.paidDay = dayOf(Date.now());
     game.cash -= price;
     const ll = this.world!.proj.toLngLat(lot.x, lot.y);
     if (had) {
@@ -176,7 +179,8 @@ export class HomesUi {
     this.host.save();
     countPlay('home', what);
     const mine = this.homeOf(lot)!;
-    this.host.toast(`It's yours: ${describe(lot, what)}. It pays ${money(mine.rent)} rent each day you come back.`, 'good', 6000);
+    this.host.toast(`It's yours: ${describe(lot, what)}. It pays ${money(mine.rent)} rent each day you come back.${first ? ' You can now save your game online, on the start screen.' : ''}`, 'good', first ? 9000 : 6000);
+    if (first) this.host.firstHome?.();
     this.near = null;
     this.look();
     return true;
