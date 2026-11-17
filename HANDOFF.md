@@ -201,6 +201,22 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   could be lost between visits ("you got to take it there or you will start with zero when you come back").
   Also seen on the owner's iPad: the panel beside a building sits over the minimap and under the radio
   hint, top right; not changed yet.
+- **Flats first, painting, and the first-home mission (owner, 17 November 2026).** Asked for together:
+  - *Flats first:* "First you need to buy floors/flats... the further the game the more you can buy houses
+    as a whole." A first home is a flat; houses open with the 3rd home (`HOUSES_AFTER`), whole buildings
+    (buy all, or the rest of a building one has a flat in) with the 6th (`BUILDINGS_AFTER`), in `homes.ts`.
+    A locked button says when it opens. Homes bought before keep what they are.
+  - *Painting* ("as soon as you bought a full house"): a house or a whole building one owns can be painted
+    from the panel beside it: eight colours and the map's own again (`PAINTS`). Free for now. The colour
+    is kept with the home (a ninth field in the packed homes; older saves read fine) and drawn on the 3D
+    building (`CityModel.paintBuilding`, by the outline handed in).
+  - *Private mission:* once a player with no home has the cash for the cheapest flat in the square,
+    between runs and with no package on board, a card says "Private mission open now". "Show me the place"
+    picks a part of town near the player where flats are cheap (several of the cheapest flats within
+    150 m of each other, within 800 m), marks up to six of them with a green $ sign, and the arrow (green)
+    points there (`Game.guide`); on arrival it says from what price. Done with the first home, however
+    bought. "Later" asks again on the next visit. Kept in `3da-mission`.
+  Built on branch `claude/bank`, with the banks; not deployed.
 - **Supabase's GitHub link: not now (owner, 17 November 2026).** The dashboard shows "No repository
   connected"; that is Supabase's optional GitHub link (changes in `supabase/migrations/` on main go live by
   themselves, and test copies of the database per pull request on a paid plan). Not set up: the Supabase

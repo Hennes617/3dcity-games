@@ -103,7 +103,7 @@ export interface Hud {
   job: { left: number; metres: number; pay: number; kind: JobKind } | null;
   hint: string;
   /** where the arrow points: the drop-off, or the nearest job */
-  target: { ndcX: number; ndcY: number; metres: number; kind: 'drop' | 'job' } | null;
+  target: { ndcX: number; ndcY: number; metres: number; kind: 'drop' | 'job' | 'guide' } | null;
   delivered: number;
   /** well-known sights in the picture, to write their names over them */
   sights: Array<{ name: string; ndcX: number; ndcY: number; metres: number | null }>;
@@ -260,6 +260,8 @@ export class Game {
   readonly ticks: Array<(dt: number) => void> = [];
   /** while true the game stands still (an add-on has a menu open); the picture is still drawn */
   held = false;
+  /** A spot an add-on sends the player to (a mission's): the arrow points there, unless a package is on board. */
+  guide: { x: number; y: number } | null = null;
   /** Something that makes a noise has happened; `strength` from 0 to 1 where it varies. */
   onSound: (what: Sfx, strength?: number) => void = () => undefined;
   /** The last delivery of a run is in: what it scored and how long it took (s). */
@@ -1900,10 +1902,12 @@ export class Game {
   hud(): Hud {
     const [px, py] = this.pos();
     let target: Hud['target'] = null;
-    let best: { x: number; y: number; d: number; kind: 'drop' | 'job' } | null = null;
+    let best: { x: number; y: number; d: number; kind: 'drop' | 'job' | 'guide' } | null = null;
     if (this.job) {
       const [x, y] = this.local(this.job.to);
       best = { x, y, d: Math.hypot(x - px, y - py), kind: 'drop' };
+    } else if (this.guide) {
+      best = { ...this.guide, d: Math.hypot(this.guide.x - px, this.guide.y - py), kind: 'guide' };
     } else {
       for (const m of this.pickups) {
         const [x, y] = this.local(m);

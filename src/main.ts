@@ -258,7 +258,7 @@ async function go(at: LngLat, name?: string, sent: Challenge | null = null): Pro
       controls.onMap = () => showMap(true);
       game.showRoute = routeLine();
       (window as unknown as { game: Game }).game = game;
-      homes = new HomesUi({ game, toast, save: () => save(), place: () => placeName, firstHome: welcomeHome });
+      homes = new HomesUi({ game, toast, save: () => save(), place: () => placeName, firstHome: welcomeHome, card: missionCard });
       (window as unknown as { homes: HomesUi }).homes = homes;
       addonHost({ game, toast, api: 2 });
       // a tester's key was in play: say how it went
@@ -384,6 +384,29 @@ function welcomeHome(what: string, rent: string): void {
   $('btn-firsthome-go').textContent = saving ? 'Go on' : 'Later';
   $('firsthome').hidden = false;
 }
+/** A card over the game that waits for a yes or a no (the homes' mission). */
+let missionAnswer: ((yes: boolean) => void) | null = null;
+function missionCard(title: string, text: string, yes: string, no: string, answer: (yes: boolean) => void): void {
+  welcoming = true;
+  controls.enabled = false;
+  $('mission-title').textContent = title;
+  $('mission-text').textContent = text;
+  $('btn-mission-yes').textContent = yes;
+  $('btn-mission-no').textContent = no;
+  missionAnswer = answer;
+  $('mission').hidden = false;
+}
+function closeMission(yes: boolean): void {
+  $('mission').hidden = true;
+  welcoming = false;
+  controls.enabled = playing && !paused;
+  before = 0;
+  const answer = missionAnswer;
+  missionAnswer = null;
+  answer?.(yes);
+}
+$('btn-mission-yes').addEventListener('click', () => closeMission(true));
+$('btn-mission-no').addEventListener('click', () => closeMission(false));
 function closeWelcome(): void {
   $('firsthome').hidden = true;
   welcoming = false;
