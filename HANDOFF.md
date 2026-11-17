@@ -146,7 +146,7 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   higher prices. Prices from the map alone for now (works in every village); real rent or land-value data,
   where a city publishes it, is a later step and is to touch prices only. Numbers to tune after the owner
   plays: `FLAT_BASE` 900 and the rent (see below). Built on branch
-  `claude/homes`, not yet shown to the owner or deployed. Checked in Nuremberg, Manhattan, Berlin and two
+  `claude/homes`, merged to main and live since 17 November 2026 (owner: "just put it live"). Checked in Nuremberg, Manhattan, Berlin and two
   Black Forest / Franconian places: cheapest flat $640–700 everywhere, 40–60 ms to price an area.
   The owner then set a ceiling on cash: $1,000,000 for now (`MAX_CASH`), so rent can't pile up without end.
   Then the numbers were checked: rent of 3.5 % an hour made money nearly double each day (the ceiling in 12
@@ -165,7 +165,7 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   (`docs/supabase/play_counts.sql`): `new`/`back` visits once a day per browser with a one-word source,
   `run`, `home` (flat/house/building), `rent`. The owner reads it in the SQL Editor:
   `select day, kind, detail, n from play_counts order by day desc, kind, detail;`. The table is live in the
-  project; the game code that writes to it is on branch `claude/homes`, not deployed. The table was empty
+  project; the game code that writes to it went live on 17 November 2026. The table was empty
   on 16 November (the owner deleted three test rows). Deletes through the Supabase tool ask the owner to
   confirm and that answer did not arrive in time, twice; for a delete, give the owner the SQL to run instead.
 - **Saving online for everyone, with homes (owner, 16 November 2026).** The owner's worry was space and
