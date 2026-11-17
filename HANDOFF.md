@@ -193,6 +193,11 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   tool already reaches the project (MindMacher / 3da-waitlist), a merge going live by itself would skip
   asking the owner, and the history in `docs/supabase/` is not in its format. Worth it later, with more
   people working on the database or real players and Pro, e.g. alongside the mindmacher.com move.
+- **The older link counter was broken from 15 Nov 23:46 UTC to 17 Nov ~21:25 UTC** (found 17 November):
+  `count_link_at` refused every call ("kind" ambiguous), so no challenge links made/opened and no
+  `?ref=youtube` arrivals were counted in that time; `play_counts` was fine. Fixed and tested
+  (`docs/supabase/link_counts_fix.sql`). After any change to a counting function, call it once inside
+  `begin; … rollback;` to see it works.
 - **Discord: not yet (owner, 17 November 2026).** An empty server puts the first people off and needs
   looking after. The owner reserves a server and its name now, with no link in the game. Open it, and add
   an invite button to the menu (a plain link, nothing counted), once a handful of players come back daily
