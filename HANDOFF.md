@@ -163,7 +163,7 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   the game. Both options passed that; the owner chose Supabase only, because it can count game events as
   well as visits. Table `play_counts` (day, kind, detail, n), written only by `count_play()`
   (`docs/supabase/play_counts.sql`): `new`/`back` visits once a day per browser with a one-word source,
-  `run`, `home` (flat/house/building), `rent`. The owner reads it in the SQL Editor:
+  `start` (a run begun, first package on board), `run` (finished), `home` (flat/house/building), `rent`, `guess` (a Where am I? round) and `time` (time played per visit: under1/1to5/5to20/over20 minutes, sent once when the page is hidden or closed; the last three added 17 November). The owner reads it in the SQL Editor:
   `select day, kind, detail, n from play_counts order by day desc, kind, detail;`. The table is live in the
   project; the game code that writes to it went live on 17 November 2026. The table was empty
   on 16 November (the owner deleted three test rows). Deletes through the Supabase tool ask the owner to
