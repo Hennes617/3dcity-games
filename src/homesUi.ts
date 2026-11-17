@@ -7,12 +7,18 @@
 import type { Game } from './game/game';
 import type { World } from './game/world';
 import { dayOf, homesIn, loadHomes, rentDue, rentFor, rentPerVisit, saveHomes, type Home, type Homes, type Lot } from './game/homes';
+import { homePlate, inPlate, loadSaved, payFrom, storeSaved, type Plate } from './game/bank';
+import { MAX_CASH } from './game/game';
+import { serviceIcon } from './game/services';
 import { pointInRing } from './geo/polygon';
 import { countPlay } from './linkCount';
 
 const money = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
 /** how near a building one has to stop for its panel (m) */
 const BESIDE_M = 7;
+/** how near a bank one has to stop: its spot on the road, or the bank itself on foot (m) */
+const BANK_ROAD_M = 9;
+const BANK_M = 14;
 /** how far from the end of a run an offer may lie (m) */
 const OFFER_M = 500;
 
@@ -89,10 +95,20 @@ export class HomesUi {
   private homes: Homes = loadHomes();
   private world: World | null = null;
   private marks = new Map<Lot, { remove: () => void }>();
-  private near: Lot | null = null;
   private lookT = 0;
   private welcomed = false;
   private readonly panel = document.getElementById('forsale')!;
+  private readonly savedEl = document.getElementById('saved');
+  /** cash paid in at a bank of the home plate (`game/bank.ts`) */
+  private saved = loadSaved();
+  /** the town of the first home, where the banks are */
+  private plate: Plate | null = homePlate(this.homes);
+  /** whether the square being played is in the home plate */
+  private atPlate = false;
+  /** the banks of the square, where the home plate's are shown: each with its spot on the road */
+  private banks: Array<{ x: number; y: number; rx: number; ry: number; mark: { remove: () => void } }> = [];
+  /** what the panel shows, so it is drawn again only when that changes */
+  private shown = '';
 
   constructor(private readonly host: HomesHost) {
     host.game.ticks.push((dt) => this.tick(dt));
@@ -118,6 +134,11 @@ export class HomesUi {
       this.welcomed = true;
       this.payRent(true);
     }
+    if (this.savedEl) {
+      this.savedEl.hidden = !this.plate;
+      const text = `Bank ${money(this.saved)}`;
+      if (this.savedEl.textContent !== text) this.savedEl.textContent = text;
+    }
     this.lookT -= dt;
     if (this.lookT > 0) return;
     this.lookT = 0.25;
@@ -128,9 +149,45 @@ export class HomesUi {
   private enter(world: World): void {
     this.world = world;
     this.marks.clear();
-    this.near = null;
+    this.shown = '';
     this.owned = homesIn(this.homes, world.lots, (lon, lat) => world.proj.toLocal(lon, lat));
     for (const lot of this.owned.keys()) this.marks.set(lot, world.mark(icon(), lot.x, lot.y));
+    this.banks = [];
+    this.showBanks();
+  }
+
+  /** In the home plate, the banks' symbols: on the roof (or by the street, where one is made up) and on the maps. */
+  private showBanks(): void {
+    const world = this.world;
+    if (!world) return;
+    const mid = world.proj.toLngLat(0, 0);
+    this.atPlate = inPlate(this.plate, mid.lat, mid.lon);
+    if (!this.atPlate || this.banks.length) return;
+    for (const b of world.banks) {
+      const n = world.roads.nearest(b.x, b.y, 150, 'traffic');
+      const [rx, ry] = n ? world.roads.point(n.line, n.s) : [b.x, b.y];
+      this.banks.push({ x: b.x, y: b.y, rx, ry, mark: world.mark(serviceIcon('bank', !!b.invented), b.x, b.y) });
+    }
+  }
+
+  /** What the player can spend here: the cash carried, and in the home plate the savings too. */
+  private budget(): number {
+    return this.host.game.cash + (this.atPlate ? this.saved : 0);
+  }
+
+  /** Pay cash in at a bank. */
+  payIn(): number {
+    const { game } = this.host;
+    const amount = Math.min(Math.floor(game.cash), MAX_CASH - this.saved);
+    if (amount < 1) return 0;
+    game.cash -= amount;
+    this.saved += amount;
+    storeSaved(this.saved);
+    this.host.save();
+    this.host.toast(`${money(amount)} paid in. You have ${money(this.saved)} in the bank, safe from fines.`, 'good', 5000);
+    this.shown = '';
+    this.look();
+    return amount;
   }
 
   /** Pay the rent of a new day, once. On arrival, say so. */
@@ -157,13 +214,18 @@ export class HomesUi {
     const { game } = this.host;
     const had = this.homeOf(lot);
     const price = what === 'building' ? lot.whole - (had?.paid ?? 0) : lot.price;
-    if (game.cash < price || (had && what !== 'building') || had?.kind === 'building') return false;
+    const pay = payFrom(price, game.cash, this.saved, this.atPlate);
+    if (!pay || (had && what !== 'building') || had?.kind === 'building') return false;
     // the rent so far goes out first, so the new home's rent starts now
     this.payRent();
     // a first home starts paying tomorrow
     const first = !this.homes.homes.length;
     if (first) this.homes.paidDay = dayOf(Date.now());
-    game.cash -= price;
+    game.cash -= pay.cash;
+    if (pay.saved) {
+      this.saved -= pay.saved;
+      storeSaved(this.saved);
+    }
     const ll = this.world!.proj.toLngLat(lot.x, lot.y);
     if (had) {
       had.kind = 'building';
@@ -178,10 +240,15 @@ export class HomesUi {
     saveHomes(this.homes);
     this.host.save();
     countPlay('home', what);
+    if (first) {
+      // this town is now the home plate: its banks show
+      this.plate = homePlate(this.homes);
+      this.showBanks();
+    }
     const mine = this.homeOf(lot)!;
     if (first && this.host.firstHome) this.host.firstHome(describe(lot, what), money(mine.rent));
-    else this.host.toast(`It's yours: ${describe(lot, what)}. It pays ${money(mine.rent)} rent each day you come back.`, 'good', 6000);
-    this.near = null;
+    else this.host.toast(`It's yours: ${describe(lot, what)}.${pay.saved ? ` ${money(pay.saved)} of it came from the bank.` : ''} It pays ${money(mine.rent)} rent each day you come back.`, 'good', 6000);
+    this.shown = '';
     this.look();
     return true;
   }
@@ -191,8 +258,10 @@ export class HomesUi {
     const { game } = this.host;
     const world = this.world;
     let found: Lot | null = null;
+    let bank = false;
     if (world && game.speed() < 1.2 && !game.held) {
       const [px, py] = game.pos();
+      bank = this.banks.some((b) => Math.hypot(b.rx - px, b.ry - py) < BANK_ROAD_M || Math.hypot(b.x - px, b.y - py) < BANK_M);
       let best = BESIDE_M;
       for (const lot of world.lots) {
         if (Math.abs(lot.x - px) > 120 || Math.abs(lot.y - py) > 120) continue;
@@ -203,12 +272,27 @@ export class HomesUi {
         }
       }
     }
-    if (found === this.near && (found === null || this.panel.dataset.cash === String(game.cash))) return;
-    this.near = found;
-    this.panel.hidden = !found;
-    if (!found) return;
-    this.panel.dataset.cash = String(game.cash);
+    if (bank) found = null;
+    const shown = bank ? `bank ${game.cash} ${this.saved}` : found ? `${world!.lots.indexOf(found)} ${game.cash} ${this.saved}` : '';
+    if (shown === this.shown) return;
+    this.shown = shown;
+    this.panel.hidden = !shown;
+    if (!shown) return;
     this.panel.replaceChildren();
+    if (bank) {
+      const title = document.createElement('b');
+      title.textContent = 'Bank';
+      const p = document.createElement('p');
+      p.textContent = `You have ${money(this.saved)} here. Money in the bank is safe from fines and pays for homes in ${this.plate?.place || 'your home town'}.`;
+      const b = document.createElement('button');
+      const amount = Math.min(Math.floor(game.cash), MAX_CASH - this.saved);
+      b.textContent = `Pay in ${money(Math.max(0, amount))}`;
+      b.disabled = amount < 1;
+      b.addEventListener('click', () => this.payIn());
+      this.panel.append(title, p, b);
+      return;
+    }
+    if (!found) return;
     const had = this.homeOf(found);
     const line = (text: string) => {
       const p = document.createElement('p');
@@ -218,7 +302,7 @@ export class HomesUi {
     const button = (text: string, price: number, what: 'flat' | 'house' | 'building') => {
       const b = document.createElement('button');
       b.textContent = `${text}  ${money(price)}`;
-      b.disabled = game.cash < price;
+      b.disabled = this.budget() < price;
       b.addEventListener('click', () => this.buy(found!, what));
       this.panel.append(b);
     };
@@ -240,7 +324,7 @@ export class HomesUi {
       button('Buy a flat', found.price, 'flat');
       button(`Buy all ${found.units}`, found.whole, 'building');
     }
-    if (game.cash < found.price) line(`You have ${money(game.cash)}.`);
+    if (this.budget() < found.price) line(`You have ${money(game.cash)}${this.atPlate && this.saved ? ` and ${money(this.saved)} in the bank` : ''}.`);
   }
 
   /**
@@ -258,7 +342,7 @@ export class HomesUi {
     }
     const [px, py] = game.pos();
     const free = world.lots.filter((l) => Math.hypot(l.x - px, l.y - py) < OFFER_M && !this.homeOf(l));
-    const cash = game.cash;
+    const cash = this.budget();
     const p = (text: string, cls = '') => {
       const el = document.createElement('p');
       el.textContent = text;
@@ -280,7 +364,7 @@ export class HomesUi {
       const head = document.createElement('b');
       head.textContent = `For sale near here: ${describe(pick, what(pick))}`;
       box.append(head);
-      p(`${money(pick.price)}. You have ${money(cash)}. It pays ${money(rentFor(pick.price))} rent each day you come back.`);
+      p(`${money(pick.price)}. You have ${money(cash)}${this.atPlate && this.saved ? ', counting the bank' : ''}. It pays ${money(rentFor(pick.price))} rent each day you come back.`);
       const b = document.createElement('button');
       b.className = 'buy';
       b.textContent = `Buy it for ${money(pick.price)}`;
