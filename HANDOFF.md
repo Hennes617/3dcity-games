@@ -178,6 +178,12 @@ called `3DA` on the desktop (`~/Desktop/3DA`) and were too large to send to the 
   changes the save). Found while testing: the map gives one number to a group of buildings mapped as one
   thing (87 in a Nuremberg square), so a home is matched to the nearest building with its number
   (`homesIn`), never by the number alone.
+- **Supabase's GitHub link: not now (owner, 17 November 2026).** The dashboard shows "No repository
+  connected"; that is Supabase's optional GitHub link (changes in `supabase/migrations/` on main go live by
+  themselves, and test copies of the database per pull request on a paid plan). Not set up: the Supabase
+  tool already reaches the project (MindMacher / 3da-waitlist), a merge going live by itself would skip
+  asking the owner, and the history in `docs/supabase/` is not in its format. Worth it later, with more
+  people working on the database or real players and Pro, e.g. alongside the mindmacher.com move.
 - **Planned: move the game's home to https://mindmacher.com/3da/ (owner, 16 November 2026), then SEO.**
   Today that address is only a forwarder to github.io, tagged `?ref=youtube`, with `noindex`
   (`docs/mindmacher/3da/index.html`; the site is Hostinger shared hosting). Checked: the build uses a
