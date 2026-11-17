@@ -6,7 +6,7 @@
 import { Game, MAX_CASH, RUN_JOBS, type Course, type Hud } from './game/game';
 import { linkHome, packChallenge, readChallenge, type Challenge } from './challenge';
 import { cameByVideo, countMade, countOpened, countPlay, countVisit, playingAt } from './linkCount';
-import { arrive as cloudArrive, changed, savingOn } from './cloud';
+import { arrive as cloudArrive, changed, savedName, savingOn } from './cloud';
 import { loadHomes } from './game/homes';
 import { wireCloud } from './cloudUi';
 import { Sound } from './sound';
@@ -256,7 +256,8 @@ async function go(at: LngLat, name?: string, sent: Challenge | null = null): Pro
       controls.onMap = () => showMap(true);
       game.showRoute = routeLine();
       (window as unknown as { game: Game }).game = game;
-      homes = new HomesUi({ game, toast, save: () => save(), place: () => placeName, firstHome: () => openSaving() });
+      homes = new HomesUi({ game, toast, save: () => save(), place: () => placeName, firstHome: welcomeHome });
+      (window as unknown as { homes: HomesUi }).homes = homes;
       addonHost({ game, toast, api: 2 });
       // a tester's key was in play: say how it went
       void fullNote.then((n) => n && toast(n.text, n.kind));
@@ -365,6 +366,37 @@ let secret: Round | null = null;
 let dropping = false;
 /** the card with the four names is up and the game waits behind it */
 let guessing = false;
+
+/** The first home is bought: a card says what it brings, and that the game can now be saved online. The game waits. */
+let welcoming = false;
+function welcomeHome(what: string, rent: string): void {
+  openSaving();
+  welcoming = true;
+  controls.enabled = false;
+  $('firsthome-what').textContent = `It's yours: ${what}. It pays ${rent} rent each day you come back to the game.`;
+  const saving = savingOn();
+  $('firsthome-save').textContent = saving
+    ? `Your game is saved online as ${savedName()}, and your home with it.`
+    : 'From now on you can save your game online: give it a name and go on with it on another device. Your home stays yours.';
+  $('btn-firsthome-save').hidden = saving || !savingOpen;
+  $('btn-firsthome-go').textContent = saving ? 'Go on' : 'Later';
+  $('firsthome').hidden = false;
+}
+function closeWelcome(): void {
+  $('firsthome').hidden = true;
+  welcoming = false;
+  controls.enabled = playing && !paused;
+  before = 0;
+}
+$('btn-firsthome-go').addEventListener('click', closeWelcome);
+$('btn-firsthome-save').addEventListener('click', () => {
+  closeWelcome();
+  save();
+  setScreen('start');
+  const box = $('account');
+  box.scrollIntoView({ block: 'center' });
+  box.querySelector('input')?.focus();
+});
 /** how long the player has looked around (s), and the wrong names picked */
 let lookedS = 0;
 let wrongPicks = 0;
@@ -890,8 +922,8 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
   const dt = before ? (now - before) / 1000 : 0;
   before = now;
-  if (!game?.world || !playing || mapOpen || paused || guessing) sound.hear(null);
-  if (paused || guessing) return;
+  if (!game?.world || !playing || mapOpen || paused || guessing || welcoming) sound.hear(null);
+  if (paused || guessing || welcoming) return;
   if (!game?.world || !playing) {
     // behind the result of a run the camera goes on rising
     if (game?.world && fresh && !$('result').hidden) {
@@ -976,7 +1008,7 @@ for (const el of document.querySelectorAll<HTMLElement>('#bigmap-key .ico, #open
 
 /** Hold the game, or let it go on. The card also lets the player change what they are playing. */
 function setPause(on: boolean): void {
-  if (on && (!playing || mapOpen || !$('result').hidden || !$('guess').hidden)) return;
+  if (on && (!playing || mapOpen || welcoming || !$('result').hidden || !$('guess').hidden)) return;
   paused = on;
   $('pause').hidden = !on;
   controls.enabled = playing && !on;

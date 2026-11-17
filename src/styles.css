@@ -51,7 +51,7 @@ body.touch .hint kbd { display: none; }
 #arrow span { position: absolute; left: calc(60px + var(--lx, -24px)); top: calc(60px + var(--ly, 20px)); width: 60px; margin-left: -6px; white-space: nowrap; text-align: center; font: 700 14px/1 inherit; text-shadow: 0 1px 3px #000, 0 0 2px #000; }
 
 #toasts { position: absolute; left: 50%; top: calc(64px + env(safe-area-inset-top)); transform: translateX(-50%); display: grid; gap: 6px; justify-items: center; }
-.toast { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; font-weight: 600; font-size: 14px; white-space: nowrap; animation: toast 3.2s forwards; }
+.toast { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; font-weight: 600; font-size: 14px; white-space: normal; max-width: min(620px, 90vw); text-align: center; animation: toast 3.2s forwards; }
 .toast.good { color: var(--green); }
 .toast.bad { color: var(--red); }
 @keyframes toast { 0% { opacity: 0; transform: translateY(-6px); } 8%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; } }
