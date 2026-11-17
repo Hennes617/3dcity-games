@@ -58,7 +58,7 @@ export type AreaKind = 'water' | 'green' | 'forest' | 'farmland' | 'sand' | 'pla
 export interface AreaFeature {
   kind: AreaKind;
   polys: Polygon[];
-  /** for water from the map tiles: the map's own word for it (pond, lake, river, swimming_pool, ocean) */
+  /** from the map tiles: the map's own word for it (water: pond, lake, river, swimming_pool, ocean; land: pitch, stadium, playground, cemetery) */
   cls?: string;
 }
 

@@ -14,9 +14,12 @@ import { buildRoadMeshes, disposeRoadMeshes, showRelief } from './roadMesh';
 import { RoadNet } from './roads';
 import { Solids, Streams, WaterMask } from './solids';
 import { basinMesh, takeBasins } from './basins';
+import { pitchMesh, takePitches } from './pitches';
+import { deckMesh, takeDecks } from './docks';
 import type { AreaFeature } from '../geo/osm';
 import { sightsIn, type Sight } from '../landmarks';
 import { localColours } from './localColours';
+import { localHeights } from './localHeights';
 import { calmGround } from './ground';
 import { readNamedStreets, readStreetNames, type StreetLabel } from './streetNames';
 import { findLots, type Lot } from './homes';
@@ -73,6 +76,12 @@ Object.assign(PALETTE, {
 
 
 /** Towers are squashed so the camera can stay close above the streets. */
+/**
+ * Whether a subway entrance can be walked into for a ride. Off for now (owner, 16 November 2026):
+ * on the iPad the ride did not start. The entrances, their signs and stairwells stay.
+ */
+export const SUBWAY_RIDES = false;
+
 export function gameHeight(h: number): number {
   return h <= 18 ? h : 18 + (h - 18) * 0.3;
 }
@@ -375,6 +384,8 @@ export class World {
       stops.push(st);
     }
     await breathe();
+    // a building with no recorded height takes its neighbours', before tall ones are squashed
+    const heightCounts = localHeights(data.buildings);
     const buildings = data.buildings.map((b) => ({ poly: b.poly, height: gameHeight(b.height), minHeight: gameHeight(b.minHeight), estimated: false, heightKnown: true, id: b.id, realHeight: b.height }));
     // roofs out of the ground and the sea to sea level, before anything is built on it
     calmGround(grid, buildings, data.features.sea);
@@ -400,28 +411,37 @@ export class World {
     await breathe();
     // small water becomes basins with a rim, taken out of what is painted on the ground
     const basins = takeBasins(data.features.areas, AREA_SIZE_M / 2);
+    // sports grounds too: turf with sharp edges and white lines
+    const pitches = takePitches(data.features.areas, AREA_SIZE_M / 2);
+    // piers and wharves: decks on the water, walked and driven on
+    const decks = takeDecks(data.features.areas);
     model.setFeatures(data.features);
     const colours = localColours(data.colours, makeProjector(centre));
     model.setBuildingTint((e, n) => colours.at(e, n));
     (model as unknown as { roofCounts: unknown }).roofCounts = colours.counts;
+    (model as unknown as { heightCounts: unknown }).heightCounts = heightCounts;
     await breathe();
     const roads = new RoadNet(data.features.lines, AREA_SIZE_M / 2);
     await breathe();
     const over = buildingsOverRoads(buildings, roads);
-    const ribbons = await buildRoadMeshes(roads, (x, y) => surfaceY(model, x, y), breathe);
+    // a basin stops a car as water does; a deck carries it
+    const wet: AreaFeature[] = [...data.features.areas, { kind: 'water', polys: basins.map((b) => b.poly) }];
+    const water = new WaterMask(wet, data.features.lines, data.features.sea ?? [], AREA_SIZE_M, decks.map((d) => d.poly));
+    const ribbons = await buildRoadMeshes(roads, (x, y) => surfaceY(model, x, y), breathe, (x, y) => water.at(x, y));
     model.group.add(ribbons);
     await breathe();
     const walls = buildings.filter((_, i) => !over.has(i));
     const solids = new Solids(walls);
-    // a basin stops a car as water does
-    const wet: AreaFeature[] = [...data.features.areas, { kind: 'water', polys: basins.map((b) => b.poly) }];
-    const water = new WaterMask(wet, data.features.lines, data.features.sea ?? [], AREA_SIZE_M);
     // last, when nothing works the ground's surface over again
     showRelief(model.terrain.surface.geometry);
     const signs = stopSigns(stops, (x, y) => surfaceY(model, x, y), roads, subwayLetter(centre.lat, centre.lon), 'picture');
     model.group.add(signs);
     const basinShape = basinMesh(basins, (x, y) => surfaceY(model, x, y));
     if (basinShape) signs.add(basinShape);
+    const pitchShape = pitchMesh(pitches, (x, y) => surfaceY(model, x, y));
+    if (pitchShape) signs.add(pitchShape);
+    const deckShape = deckMesh(decks, (x, y) => surfaceY(model, x, y));
+    if (deckShape) signs.add(deckShape);
     const world = new World(centre, model, roads, solids, water, new Streams(data.features.lines), ribbons, stops, signs, buildings.length);
     world.buildings = walls;
     world.streetNames = readStreetNames(tiles, world.proj, AREA_SIZE_M / 2);

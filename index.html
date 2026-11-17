@@ -71,6 +71,7 @@
         <button id="btn-openjobs">Got it</button>
       </div>
       <div class="panel" id="forsale" hidden></div>
+      <button class="panel" id="btn-guess" hidden></button>
       <div id="toasts"></div>
       <div class="panel" id="coach" hidden><small id="coach-n"></small><p id="coach-text"></p><button id="coach-skip">Skip the tour</button></div>
       <button class="panel" id="btn-menu" aria-label="Main menu">☰</button>
@@ -98,7 +99,9 @@
         <div id="modes" role="group" aria-label="What to play">
           <button type="button" id="mode-run" aria-pressed="true"><b>Compare with friends</b><span>A run of three deliveries against the clock. Send it to a friend to beat.</span></button>
           <button type="button" id="mode-jobs" aria-pressed="false"><b>Do jobs</b><span>As many as you like: supply runs, rush jobs and clean runs from the stations in town.</span></button>
+          <button type="button" id="mode-guess" aria-pressed="false"><b>Where am I?</b><span>You are put down in a city without its name. Drive around and pick it from four.</span></button>
         </div>
+        <button type="button" class="primary" id="btn-drop" hidden>Put me down somewhere</button>
         <form id="search">
           <input id="q" type="search" placeholder="City, street or lat, lon" autocomplete="off" enterkeyhint="go" />
           <button class="primary">Go</button>
@@ -124,7 +127,7 @@
           <dt>Rings</dt>
           <dd><span class="dot job"></span> pick up a package · <span class="dot drop"></span> deliver it before the time runs out</dd>
           <dt>Transit</dt>
-          <dd><span class="dot sub"></span> subway entrance: walk in to ride towards your target · buses stop at <span class="dot bus"></span>, trams at <span class="dot tram"></span></dd>
+          <dd><span class="dot sub"></span> subway entrance (no rides for now) · buses stop at <span class="dot bus"></span>, trams at <span class="dot tram"></span></dd>
         </dl>
         <p class="small">Map data © OpenStreetMap contributors, tiles by OpenFreeMap; terrain: Mapzen on AWS. Stops and stations from OpenStreetMap. Search by Photon (komoot) and Nominatim. Built on the Your Place 3D engine.</p>
       </div>
@@ -139,6 +142,24 @@
           <button id="btn-city">Main menu</button>
         </div>
         <p class="small">P or Esc pauses and continues.</p>
+      </div>
+    </section>
+    <section id="guess" class="over" hidden>
+      <div class="card">
+        <h2 id="guess-title"></h2>
+        <p class="score" id="guess-score"></p>
+        <p class="small" id="guess-line"></p>
+        <div id="guess-options"></div>
+        <div id="guess-after" hidden>
+          <p class="small" id="guess-rival" hidden></p>
+          <input id="guess-name" type="text" maxlength="16" placeholder="Your name (optional)" autocomplete="off" enterkeyhint="done" />
+          <button class="primary" id="btn-guess-send">Send it to a friend to guess</button>
+          <p class="small" id="guess-note"></p>
+          <input id="guess-link" type="text" readonly hidden aria-label="Link to this city" />
+          <div class="row"><button id="btn-guess-next">Next city</button><button id="btn-guess-stay">Keep driving here</button></div>
+        </div>
+        <div class="row" id="guess-before"><button id="btn-guess-back">Look around some more</button></div>
+        <p class="small" id="guess-tally"></p>
       </div>
     </section>
     <section id="result" hidden>
