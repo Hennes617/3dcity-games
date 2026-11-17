@@ -19,8 +19,8 @@
 
 const TALLY = 'https://lecaoamodyjubwuvhpcq.supabase.co/rest/v1/rpc/count_link_at';
 const PLAY = 'https://lecaoamodyjubwuvhpcq.supabase.co/rest/v1/rpc/count_play';
+
 /** Tests are not counted: a browser driven by a program, a page from this computer, or a test build. */
-// nothing is counted from tests: a browser driven by a script, this machine, or a test build
 const quiet = (): boolean => typeof navigator === 'undefined' || navigator.webdriver || !!import.meta.env.VITE_TESTING || ['localhost', '127.0.0.1'].includes(location.hostname);
 // the store's publishable key: meant to be public, it lets a browser add one to the tally and nothing else
 const KEY = 'sb_publishable__R5VVIzkFXK-ozBm18IYjg_UTw7guWe';
